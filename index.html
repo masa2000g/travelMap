@@ -1,16 +1,45 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="ja">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width">
-  <title>replit</title>
-  <link href="style.css" rel="stylesheet" type="text/css" />
-</head>
+  <meta charset="UTF-8">
+  <title>現在地マップ（Firebase連携）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+    }
+    #status {
+      padding: 10px;
+      background-color: #eef;
+      font-size: 14px;
+      border-bottom: 1px solid #ccc;
+    }
+    #map {
+      height: 85vh;
+      width: 100%;
+    }
+  </style>
+</head>
 <body>
-  Hello world
+
+  <!-- データ表示エリア -->
+  <div id="status">Firebaseから位置情報を取得中...</div>
+
+  <!-- 地図 -->
+  <div id="map"></div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <!-- 独自スクリプト -->
   <script src="script.js"></script>
 </body>
-
 </html>
