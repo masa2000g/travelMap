@@ -20,10 +20,9 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
-// 最新3件のログを取得して表示
+// ログ全件取得＆表示
 db.ref("logs")
   .orderByChild("timestamp")
-  .limitToLast(3)
   .on("value", async (snapshot) => {
     const logsObj = snapshot.val();
     if (!logsObj) {
@@ -31,20 +30,43 @@ db.ref("logs")
       return;
     }
 
-    const logs = Object.values(logsObj).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    // 安全なログ配列を生成（timestamp, lat, lng 必須）
+    const logs = Object.values(logsObj)
+      .filter(log => log && log.timestamp && log.lat && log.lng)
+      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+    if (logs.length === 0) {
+      statusDiv.textContent = "有効なログがありません。";
+      return;
+    }
+
     const latlngs = [];
 
     logs.forEach(log => {
       const { lat, lng, tag, timestamp } = log;
       const jstTime = new Date(timestamp).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-      const marker = L.marker([lat, lng]).addTo(map)
+      L.marker([lat, lng]).addTo(map)
         .bindPopup(`${tag}<br>${jstTime}`);
       latlngs.push([lat, lng]);
     });
 
-    // 経路線を表示
+    // 経路線＋矢印表示
     if (latlngs.length > 1) {
-      L.polyline(latlngs, { color: 'blue' }).addTo(map);
+      const polyline = L.polyline(latlngs, { color: 'blue' }).addTo(map);
+
+      L.polylineDecorator(polyline, {
+        patterns: [
+          {
+            offset: '5%',
+            repeat: '10%',
+            symbol: L.Symbol.arrowHead({
+              pixelSize: 8,
+              polygon: false,
+              pathOptions: { stroke: true, color: 'blue' }
+            })
+          }
+        ]
+      }).addTo(map);
     }
 
     // 最新地点の情報
@@ -65,7 +87,7 @@ db.ref("logs")
       addressText = "住所取得エラー";
     }
 
-    // 最新ログのステータス表示
+    // ステータス表示
     statusDiv.innerHTML = `
       ✅ 最新ログ取得！<br>
       アプリ名：${tag}<br>
