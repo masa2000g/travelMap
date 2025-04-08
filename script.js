@@ -1,4 +1,4 @@
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+// Firebase設定
 const firebaseConfig = {
   apiKey: "AIzaSyBtUbgKYgFwrQmES7rmZSCN0TaAV3aPKKI",
   authDomain: "sharetravelinfolikedq.firebaseapp.com",
@@ -20,36 +20,58 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
-// 最新の1件を取得
+// 最新3件のログを取得して表示
 db.ref("logs")
   .orderByChild("timestamp")
-  .limitToLast(1)
-  .on("value", (snapshot) => {
-    const logs = snapshot.val();
-    if (!logs) {
+  .limitToLast(3)
+  .on("value", async (snapshot) => {
+    const logsObj = snapshot.val();
+    if (!logsObj) {
       statusDiv.textContent = "データが存在しません。";
       return;
     }
 
-    // 最新の1件を取り出す
-    const latestKey = Object.keys(logs)[0];
-    const latest = logs[latestKey];
+    const logs = Object.values(logsObj).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const latlngs = [];
 
-    const { lat, lng, timestamp, tag } = latest;
+    logs.forEach(log => {
+      const { lat, lng, tag, timestamp } = log;
+      const jstTime = new Date(timestamp).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+      const marker = L.marker([lat, lng]).addTo(map)
+        .bindPopup(`${tag}<br>${jstTime}`);
+      latlngs.push([lat, lng]);
+    });
 
-    // 表示内容
+    // 経路線を表示
+    if (latlngs.length > 1) {
+      L.polyline(latlngs, { color: 'blue' }).addTo(map);
+    }
+
+    // 最新地点の情報
+    const latest = logs[logs.length - 1];
+    const { lat, lng, tag, timestamp } = latest;
+    const jstTime = new Date(timestamp).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
+
+    // 中心を最新地点に移動
+    map.setView([lat, lng], 15);
+
+    // 住所取得（Nominatim）
+    let addressText = "取得中...";
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
+      const data = await res.json();
+      addressText = data.display_name || "住所取得失敗";
+    } catch (e) {
+      addressText = "住所取得エラー";
+    }
+
+    // 最新ログのステータス表示
     statusDiv.innerHTML = `
       ✅ 最新ログ取得！<br>
       アプリ名：${tag}<br>
       緯度：${lat}<br>
       経度：${lng}<br>
-      時刻：${timestamp}
+      時刻（日本時間）：${jstTime}<br>
+      住所：${addressText}
     `;
-
-    // マップ更新
-    map.setView([lat, lng], 15);
-    if (window.currentMarker) map.removeLayer(window.currentMarker);
-
-    window.currentMarker = L.marker([lat, lng]).addTo(map)
-      .bindPopup(`${tag}<br>${timestamp}`).openPopup();
   });
