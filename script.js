@@ -39,12 +39,15 @@ db.ref("logs")
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
     logs.forEach(log => {
-      const { lat, lng, memo, tag, timestamp, amount } = log;
-      const label = memo || tag || "（メモなし）";
+      const { lat, lng, memo, timestamp, amount } = log;
+      const label = memo || "（メモなし）";
       const jstTime = new Date(timestamp).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
 
       L.marker([lat, lng]).addTo(map)
-        .bindPopup(`${label}<br>${jstTime}`);
+        .bindPopup(`
+          ${jstTime}<br>
+          ${label}<br>
+          ¥${amount}`);
       latlngs.push([lat, lng]);
 
       // 金額集計
@@ -63,7 +66,7 @@ db.ref("logs")
 
     // 最新地点の情報
     const latest = logs[logs.length - 1];
-    const { lat, lng, memo, tag, timestamp } = latest;
+    const { lat, lng, memo, amount, timestamp } = latest;
     const jstTime = new Date(timestamp).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
 
     map.setView([lat, lng], 10);
@@ -78,10 +81,11 @@ db.ref("logs")
     }
 
     statusDiv.innerHTML = `
-      ⚠️竹原最新出現情報取得⚠️<br>
+      ℹ️竹原最新情報<br>
       時刻：${jstTime}<br>
       住所：${addressText}<br>
-      メモ：${memo || tag || "（メモなし）"}
+      メモ：${memo}<br>
+      出費：¥${amount}
     `;
 
     // 💰 金額表示更新

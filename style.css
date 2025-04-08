@@ -1,6 +1,7 @@
 html {
   height: 100%;
   width: 100%;
+  font-size: 14px;
 }
 
 #map {
@@ -13,10 +14,10 @@ html {
 #amountStats {
   position: fixed;
   bottom: 10px;
-  right: 10px;
+  left: 10px;
   background: rgba(255, 255, 255, 0.9);
   padding: 12px;
-  font-size: 14px;
+  font-size: 12px;
   border: 1px solid #ccc;
   border-radius: 8px;
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
