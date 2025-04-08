@@ -14,16 +14,13 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 const statusDiv = document.getElementById("status");
 
-// Leaflet 地図初期化（とりあえず東京駅）
 const map = L.map('map').setView([35.6812, 139.7671], 5);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
 
-// 過去のログを取得して表示
 db.ref("logs")
   .orderByChild("timestamp")
-  //.limitToLast(3)
   .on("value", async (snapshot) => {
     const logsObj = snapshot.val();
     if (!logsObj) {
@@ -34,12 +31,29 @@ db.ref("logs")
     const logs = Object.values(logsObj).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     const latlngs = [];
 
+    // 💰 金額集計用変数
+    let total = 0, today = 0, thisWeek = 0, thisMonth = 0;
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(todayStart); weekStart.setDate(todayStart.getDate() - todayStart.getDay());
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
     logs.forEach(log => {
-      const { lat, lng, tag, timestamp } = log;
+      const { lat, lng, memo, tag, timestamp, amount } = log;
+      const label = memo || tag || "（メモなし）";
       const jstTime = new Date(timestamp).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
-      const marker = L.marker([lat, lng]).addTo(map)
-        .bindPopup(`${tag}<br>${jstTime}`);
+
+      L.marker([lat, lng]).addTo(map)
+        .bindPopup(`${label}<br>${jstTime}`);
       latlngs.push([lat, lng]);
+
+      // 金額集計
+      const t = new Date(timestamp);
+      const amt = Number(amount) || 0;
+      total += amt;
+      if (t >= todayStart) today += amt;
+      if (t >= weekStart) thisWeek += amt;
+      if (t >= monthStart) thisMonth += amt;
     });
 
     // 経路線を表示
@@ -49,13 +63,11 @@ db.ref("logs")
 
     // 最新地点の情報
     const latest = logs[logs.length - 1];
-    const { lat, lng, tag, timestamp } = latest;
+    const { lat, lng, memo, tag, timestamp } = latest;
     const jstTime = new Date(timestamp).toLocaleString("ja-JP", { timeZone: "Asia/Tokyo" });
 
-    // 中心を最新地点に移動
     map.setView([lat, lng], 10);
 
-    // 住所取得（Nominatim）
     let addressText = "取得中...";
     try {
       const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`);
@@ -65,11 +77,18 @@ db.ref("logs")
       addressText = "住所取得エラー";
     }
 
-    // 最新ログのステータス表示
     statusDiv.innerHTML = `
       ⚠️竹原最新出現情報取得⚠️<br>
       時刻：${jstTime}<br>
       住所：${addressText}<br>
-      メモ：${tag}
+      メモ：${memo || tag || "（メモなし）"}
+    `;
+
+    // 💰 金額表示更新
+    document.getElementById("amountStats").innerHTML = `
+      📅 今日：¥${today}<br>
+      📅 今週：¥${thisWeek}<br>
+      📅 今月：¥${thisMonth}<br>
+      💰使用金額 合計：¥${total}
     `;
   });
