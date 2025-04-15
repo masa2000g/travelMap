@@ -1,26 +1,69 @@
-html {
+html, body {
+  margin: 0;
+  padding: 0;
   height: 100%;
-  width: 100%;
-  font-size: 14px;
+  overflow: hidden;
+  font-family: 'DotGothic16', sans-serif;
+  background: black;
+}
+
+#map-container {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
 }
 
 #map {
-  height: 70vh; /* 画面の70%の高さにする */
   width: 100%;
-  margin-top: 10px;
+  height: 100%;
+  z-index: 1;
 }
 
+/* オーバーレイ情報ウィンドウ全体 */
+#overlay {
+  position: absolute;
+  top: 10px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  z-index: 1000;
+  pointer-events: none;
+}
 
-#amountStats {
-  position: fixed;
-  bottom: 10px;
-  left: 10px;
-  background: rgba(255, 255, 255, 0.9);
-  padding: 12px;
-  font-size: 12px;
-  border: 1px solid #ccc;
+/* 各ウィンドウ枠 */
+.info-box {
+  background-color: rgba(0, 0, 0, 0.8);
+  border: 2px solid white;
+  border-radius: 10px;
+  padding: 14px;
+  padding-top: 26px;
+  position: relative;
+  color: white;
+  font-size: 13px;
+  min-width: 140px;
+  pointer-events: auto;
+}
+
+/* タイトルを枠の上に重ねる */
+.box-title {
+  position: absolute;
+  top: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: black;
+  padding: 2px 12px;
+  font-size: 14px;
+  font-weight: bold;
+  border: 2px solid white;
   border-radius: 8px;
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
-  z-index: 9999;
-  line-height: 1.5em;
+  white-space: nowrap;
+  z-index: 2;
+}
+
+/* Leaflet ズームボタンを右下に表示 */
+.leaflet-bottom.leaflet-right {
+  bottom: 10px;
+  right: 10px;
 }

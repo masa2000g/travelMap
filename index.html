@@ -1,33 +1,33 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <title>現在地マップ（Firebase連携）</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <!-- Leaflet CSS -->
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>冒険の記録</title>
+  <!-- ドラクエ風フォント -->
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <div id="map-container">
+    <div id="map"></div>
 
-  <!-- データ表示エリア -->
-  <div id="status">Firebaseから位置情報を取得中...</div>
+    <div id="overlay">
+      <div class="info-box">
+        <div class="box-title">ステータス</div>
+        <div id="status">読み込み中...</div>
+      </div>
+      <div class="info-box">
+        <div class="box-title">出費統計</div>
+        <div id="amountStats">読み込み中...</div>
+      </div>
+    </div>
+  </div>
 
-  <!-- 地図 -->
-  <div id="map"></div>
-
-  <!-- 金額表示ボックス -->
-  <div id="amountStats"></div>
-
-  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
-
-  <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
-  <!-- 独自スクリプト -->
   <script src="script.js"></script>
 </body>
 </html>
