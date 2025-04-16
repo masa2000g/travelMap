@@ -19,7 +19,6 @@ html, body {
   z-index: 1;
 }
 
-/* オーバーレイ情報ウィンドウ全体 */
 #overlay {
   position: absolute;
   top: 10px;
@@ -32,7 +31,6 @@ html, body {
   pointer-events: none;
 }
 
-/* 各ウィンドウ枠 */
 .info-box {
   background-color: rgba(0, 0, 0, 0.8);
   border: 2px solid white;
@@ -46,7 +44,6 @@ html, body {
   pointer-events: auto;
 }
 
-/* タイトルを枠の上に重ねる */
 .box-title {
   position: absolute;
   top: -14px;
@@ -62,7 +59,17 @@ html, body {
   z-index: 2;
 }
 
-/* Leaflet ズームボタンを右下に表示 */
+/* Leaflet凡例スタイル */
+.info.legend {
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* Leafletズームボタン右下 */
 .leaflet-bottom.leaflet-right {
   bottom: 10px;
   right: 10px;

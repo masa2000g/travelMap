@@ -7,25 +7,17 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// ズームコントロールを無効にして手動で右下に表示
-const map = L.map('map', {
-  zoomControl: false
-}).setView([35.6812, 139.7671], 5);
-
-// 地図タイル追加
+// 明示的にズームボタン非表示 → カスタムで右下に追加
+const map = L.map('map', { zoomControl: false }).setView([35.6812, 139.7671], 5);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors'
 }).addTo(map);
-
-// ズームボタンを右下に追加
 L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-// リサイズ対応
 window.addEventListener("load", () => {
   setTimeout(() => map.invalidateSize(), 800);
 });
 
-// カテゴリ別の色
 const CATEGORY_SETTINGS = {
   食費: { color: 'red' },
   交通費: { color: 'blue' },
@@ -36,7 +28,6 @@ const CATEGORY_SETTINGS = {
 let polyline;
 let markers = [];
 
-// Firebaseログ取得と地図描画
 db.ref("logs").orderByChild("timestamp").on("value", async (snapshot) => {
   const logsObj = snapshot.val();
   if (!logsObj) return;
@@ -139,3 +130,16 @@ db.ref("logs").orderByChild("timestamp").on("value", async (snapshot) => {
     合計：¥${total}
   `;
 });
+
+// 凡例を左下に追加
+const legend = L.control({ position: 'bottomleft' });
+legend.onAdd = function () {
+  const div = L.DomUtil.create('div', 'info legend');
+  div.innerHTML = "<b>カテゴリ凡例</b><br>";
+  for (const cat in CATEGORY_SETTINGS) {
+    const color = CATEGORY_SETTINGS[cat].color;
+    div.innerHTML += `<i style="background:${color};width:12px;height:12px;display:inline-block;margin-right:6px;"></i>${cat}<br>`;
+  }
+  return div;
+};
+legend.addTo(map);
