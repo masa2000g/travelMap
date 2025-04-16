@@ -21,7 +21,7 @@ html, body {
 
 #overlay {
   position: absolute;
-  top: 10px;
+  top: 20px;
   left: 0;
   right: 0;
   display: flex;
@@ -71,6 +71,11 @@ html, body {
 
 /* Leafletズームボタン右下 */
 .leaflet-bottom.leaflet-right {
-  bottom: 10px;
+  bottom: 30px;
   right: 10px;
+}
+
+.leaflet-bottom.leaflet-left {
+  bottom: 30px;  /* ← デフォルト10pxを上げて調整 */
+  left: 10px;
 }
