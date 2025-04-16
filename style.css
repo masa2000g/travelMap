@@ -71,8 +71,8 @@ html, body {
 
 /* Leafletズームボタン右下 */
 .leaflet-bottom.leaflet-right {
-  bottom: 30px;
-  right: 40px;
+  bottom: 40px;
+  right: 10px;
 }
 
 .leaflet-bottom.leaflet-left {
