@@ -71,11 +71,11 @@ html, body {
 
 /* Leafletズームボタン右下 */
 .leaflet-bottom.leaflet-right {
-  bottom: 40px;
+  bottom: 60px;
   right: 10px;
 }
 
 .leaflet-bottom.leaflet-left {
-  bottom: 40px;  /* ← デフォルト10pxを上げて調整 */
+  bottom: 60px;  /* ← デフォルト10pxを上げて調整 */
   left: 10px;
 }
