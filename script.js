@@ -127,7 +127,8 @@ db.ref("logs").orderByChild("timestamp").on("value", async (snapshot) => {
     今日：¥${today}<br>
     今週：¥${week}<br>
     今月：¥${month}<br>
-    合計：¥${total}
+    合計：¥${total}<br>
+    資金：¥???
   `;
 });
 
