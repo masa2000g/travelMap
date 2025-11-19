@@ -1,0 +1,37 @@
+{
+  "env": {
+    "browser": true,
+    "es2021": true
+  },
+  "globals": {
+    "firebase": "readonly",
+    "L": "readonly",
+    "Chart": "readonly"
+  },
+  "extends": [
+    "eslint:recommended"
+  ],
+  "parserOptions": {
+    "sourceType": "script"
+  },
+  "overrides": [
+    {
+      "files": [
+        "migration.js"
+      ],
+      "env": {
+        "node": true
+      }
+    }
+  ],
+  "rules": {
+    "no-unused-vars": [
+      "warn",
+      {
+        "args": "none",
+        "varsIgnorePattern": "^_"
+      }
+    ],
+    "no-console": "off"
+  }
+}

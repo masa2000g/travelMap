@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>冒険の書</title>
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="map-container">
+    <div id="map"></div>
+
+    <div id="overlay">
+      <div class="overlay-frame">
+        <div id="statusBox" class="info-box">
+          <div class="box-title">ステータス</div>
+          <div id="status">読み込み中...</div>
+        </div>
+        <div class="info-box menu-box">
+          <div class="box-title">メニュー</div>
+          <div class="menu-grid">
+            <button type="button" class="menu-item" data-window-target="window-display">&gt; 表示設定</button>
+            <button type="button" class="menu-item" data-window-target="window-expense">&gt; 出費関係</button>
+            <button type="button" class="menu-item" data-window-target="window-prophecy">&gt; 神のお告げ</button>
+            <button type="button" class="menu-item" data-window-target="window-investment">&gt; 王の出資</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="windowLayer">
+      <div class="floating-window" id="window-expense" aria-hidden="true" data-default-top="0">
+        <div class="window-header">
+          <span>出費関係 / 統計</span>
+          <button type="button" class="window-close" data-close-target="window-expense">×</button>
+        </div>
+        <div class="window-body">
+          <div class="main-tabs" role="tablist">
+            <button type="button" class="window-tab main-tab active" data-main-tab="stats">統計</button>
+            <button type="button" class="window-tab main-tab" data-main-tab="budget">予算</button>
+          </div>
+
+          <div id="main-tab-stats" class="main-tab-panel active" data-main-panel="stats">
+            <div class="stats-shared-filter">
+              <div class="stats-filter-grid stats-shared-grid">
+                <label>
+                  カテゴリ
+                  <select id="statsCategoryFilter">
+                    <option value="all">すべて</option>
+                    <option value="食費">食費</option>
+                    <option value="交通費">交通費</option>
+                    <option value="作業">作業</option>
+                    <option value="温泉">温泉</option>
+                    <option value="観光費">観光費</option>
+                    <option value="買い物">買い物</option>
+                    <option value="宿泊費">宿泊費</option>
+                    <option value="その他">その他</option>
+                  </select>
+                </label>
+              </div>
+              <div class="stats-quick-range">
+                <button type="button" data-stats-range="7">過去7日</button>
+                <button type="button" data-stats-range="30" class="active">過去30日</button>
+                <button type="button" data-stats-range="90">過去90日</button>
+                <button type="button" data-stats-range="365">過去1年</button>
+                <button type="button" data-stats-range="all">全期間</button>
+              </div>
+              <div id="statsRangeDescription" class="range-description">集計期間：設定中...</div>
+            </div>
+
+            <div class="window-tabs" role="tablist">
+              <button type="button" class="window-tab active" data-tab-target="stats-tab-summary">集計閲覧</button>
+              <button type="button" class="window-tab" data-tab-target="stats-tab-daily">出費日足</button>
+              <button type="button" class="window-tab" data-tab-target="stats-tab-graph">カテゴリグラフ</button>
+            </div>
+
+            <div id="stats-tab-summary" class="tab-panel active" role="tabpanel">
+              <div id="statsMetrics" class="stats-metrics">
+                <div class="stat-card">
+                  <span class="stat-label">総額</span>
+                  <strong class="stat-value">--</strong>
+                </div>
+              </div>
+            </div>
+
+            <div id="stats-tab-daily" class="tab-panel" role="tabpanel">
+              <div class="stats-chart">
+                <canvas id="dailyChart" aria-label="日別出費折れ線" role="img"></canvas>
+              </div>
+            </div>
+
+            <div id="stats-tab-graph" class="tab-panel" role="tabpanel">
+              <div class="stats-chart">
+                <canvas id="expenseChart" aria-label="カテゴリ別支出" role="img"></canvas>
+              </div>
+            </div>
+          </div>
+
+          <div id="main-tab-budget" class="main-tab-panel" data-main-panel="budget">
+            <div class="budget-header">
+              <button type="button" id="budgetPrevMonth" aria-label="前の月">&lt;</button>
+              <div id="budgetMonthLabel">----年--月</div>
+              <button type="button" id="budgetNextMonth" aria-label="次の月">&gt;</button>
+            </div>
+            <div class="stats-budget">
+              <div class="stats-category-header">
+                <h4>カテゴリ別予算</h4>
+                <span id="budgetSummary"></span>
+              </div>
+              <ul id="budgetList" class="prophecy-list compact-list">
+                <li>予算情報を取得中...</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="floating-window" id="window-display" aria-hidden="true" data-default-top="80">
+        <div class="window-header">
+          <span>表示設定</span>
+          <button type="button" class="window-close" data-close-target="window-display">×</button>
+        </div>
+        <div class="window-body">
+          <div class="display-filter">
+            <div class="filter-group">
+              <div class="quick-range-buttons">
+                <button type="button" data-range-shortcut="7">過去7日</button>
+                <button type="button" data-range-shortcut="30" class="active">過去30日</button>
+                <button type="button" data-range-shortcut="90">過去90日</button>
+                <button type="button" data-range-shortcut="365">過去1年</button>
+                <button type="button" data-range-shortcut="all">全期間</button>
+              </div>
+              <div id="rangeDescription" class="range-description">全期間を表示中</div>
+            </div>
+            <div class="filter-group">
+              <label>
+                カテゴリ
+                <select id="categoryFilter">
+                  <option value="all">すべて</option>
+                  <option value="食費">食費</option>
+                  <option value="交通費">交通費</option>
+                  <option value="作業">作業</option>
+                  <option value="温泉">温泉</option>
+                  <option value="観光費">観光費</option>
+                  <option value="買い物">買い物</option>
+                  <option value="宿泊費">宿泊費</option>
+                  <option value="その他">その他</option>
+                </select>
+              </label>
+            </div>
+            <div class="filter-group toggle-row">
+              <label class="toggle-label">
+                <input type="checkbox" id="legendToggle">
+                カテゴリ凡例を表示
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="floating-window" id="window-prophecy" aria-hidden="true" data-default-top="120">
+        <div class="window-header">
+          <span>神のお告げ</span>
+          <button type="button" class="window-close" data-close-target="window-prophecy">×</button>
+        </div>
+        <div class="window-body">
+          <p class="window-description">直近の足跡から女神の助言を生成します。</p>
+          <ul id="prophecyContent" class="prophecy-list">
+            <li>神託を準備中...</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="floating-window" id="window-investment" aria-hidden="true" data-default-top="160">
+        <div class="window-header">
+          <span>王の出資</span>
+          <button type="button" class="window-close" data-close-target="window-investment">×</button>
+        </div>
+        <div class="window-body">
+          <p class="window-description">王国財務省からの報告。</p>
+          <div id="investmentSummary" class="investment-summary">
+            照会中...
+          </div>
+          <div class="investment-top">
+            <p>今月の大きな支出</p>
+            <ul id="investmentTopList" class="prophecy-list compact-list">
+              <li>集計中...</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet-polylinedecorator@1.7.0/dist/leaflet.polylineDecorator.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

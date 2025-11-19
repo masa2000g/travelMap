@@ -1,0 +1,16 @@
+{
+  "projects": {},
+  "targets": {
+    "sharetravelinfolikedq": {
+      "hosting": {
+        "travelMap": [
+          "sharetravelinfolikedq"
+        ],
+        "inputTravelLog": [
+          "admin-sharetravelinfolikedq"
+        ]
+      }
+    }
+  },
+  "etags": {}
+}

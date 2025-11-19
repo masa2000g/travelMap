@@ -1,0 +1,6 @@
+node_modules/
+public/
+serviceAccountKey.json
+travelMap/generated-icon.png
+inputTravelLog/generated-icon.png
+travelMap/updateFirebase.js
