@@ -24,12 +24,19 @@
         <button class="tab-button active" data-tab-target="logTab">ログ記録</button>
         <button class="tab-button" data-tab-target="statusTab">ステータス</button>
         <button class="tab-button" data-tab-target="budgetTab">予算</button>
+        <button class="tab-button" data-tab-target="categoryTab">カテゴリ</button>
       </div>
 
       <div class="tab-panel active" id="logTab">
         <div id="formModeBanner" class="form-mode-banner" hidden>
           <span id="formModeText"></span>
           <button type="button" id="cancelEditBtn">編集キャンセル</button>
+        </div>
+
+        <div class="preset-bar">
+          <button type="button" id="presetWake" class="preset-btn">起床</button>
+          <button type="button" id="presetSleep" class="preset-btn">就寝</button>
+          <button type="button" id="presetFuel" class="preset-btn">給油</button>
         </div>
 
         <form id="appForm">
@@ -62,6 +69,9 @@
             <option value="買い物">買い物</option>
             <option value="宿泊費">宿泊費</option>
             <option value="その他">その他</option>
+            <option value="起床">起床</option>
+            <option value="就寝">就寝</option>
+            <option value="給油">給油</option>
           </select>
 
           <label for="amountInput">金額（円）</label>
@@ -133,6 +143,28 @@
             <button type="submit">予算を保存</button>
           </form>
           <p id="budgetSaveState" class="status-save-state"></p>
+        </section>
+      </div>
+
+      <div class="tab-panel" id="categoryTab">
+        <section id="category-manager" class="card">
+          <h3>カテゴリ設定</h3>
+          <p class="card-help">カテゴリ名と色を管理できます。</p>
+          <form id="categoryForm" class="status-form">
+            <label for="categoryNameInput">カテゴリ名</label>
+            <input type="text" id="categoryNameInput" placeholder="例：食費">
+
+            <label for="categoryColorInput">色</label>
+            <input type="color" id="categoryColorInput" value="#ffcc00">
+
+            <div class="category-form-actions">
+              <button type="submit" id="categorySaveBtn">カテゴリを保存</button>
+              <button type="button" id="categoryCancelEdit" class="ghost-btn">キャンセル</button>
+            </div>
+          </form>
+          <ul id="categoriesList" class="categories-list">
+            <li>カテゴリ情報を取得中...</li>
+          </ul>
         </section>
       </div>
     </div>

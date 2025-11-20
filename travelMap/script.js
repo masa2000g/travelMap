@@ -5,6 +5,7 @@ const firebaseConfig = {
 };
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const categoriesCollectionRef = db.collection("categories");
 
 const createRateLimitedFetch = (intervalMs = 1500) => {
   let lastTime = 0;
@@ -39,7 +40,7 @@ const toNumber = (value) => {
   return Number.isFinite(converted) ? converted : NaN;
 };
 
-const CATEGORY_SETTINGS = {
+const DEFAULT_CATEGORY_SETTINGS = {
   食費: { color: '#e74c3c' },
   交通費: { color: '#3498db' },
   作業: { color: '#2ecc71' },
@@ -47,7 +48,29 @@ const CATEGORY_SETTINGS = {
   観光費: { color: '#9b59b6' },
   買い物: { color: '#ff1493' },
   宿泊費: { color: '#1abc9c' },
-  その他: { color: '#bdc3c7' }
+  その他: { color: '#bdc3c7' },
+  起床: { color: '#fffb96' },
+  就寝: { color: '#6c5ce7' },
+  給油: { color: '#f1c40f' }
+};
+let categoryColors = { ...DEFAULT_CATEGORY_SETTINGS };
+
+const getCategoryEntries = () => {
+  const entries = Object.entries(categoryColors);
+  if (entries.length) return entries;
+  return Object.entries(DEFAULT_CATEGORY_SETTINGS);
+};
+
+const getCategoryColor = (category) => {
+  return categoryColors[category]?.color || DEFAULT_CATEGORY_SETTINGS[category]?.color || "#999";
+};
+
+const buildLegendHtml = () => {
+  let html = "<b>カテゴリ凡例</b><br>";
+  getCategoryEntries().forEach(([name, config]) => {
+    html += `<i style="background:${config.color};width:12px;height:12px;display:inline-block;margin-right:6px;"></i>${name}<br>`;
+  });
+  return html;
 };
 
 const map = L.map("map", { zoomControl: false }).setView([35.6812, 139.7671], 5);
@@ -67,12 +90,14 @@ const latestMarkerIcon = L.icon({
 const legend = L.control({ position: "bottomleft" });
 legend.onAdd = function () {
   const div = L.DomUtil.create("div", "info legend");
-  let html = "<b>カテゴリ凡例</b><br>";
-  Object.entries(CATEGORY_SETTINGS).forEach(([name, config]) => {
-    html += `<i style="background:${config.color};width:12px;height:12px;display:inline-block;margin-right:6px;"></i>${name}<br>`;
-  });
-  div.innerHTML = html;
+  div.innerHTML = buildLegendHtml();
   return div;
+};
+const updateLegendContent = () => {
+  const legendEl = document.querySelector(".info.legend");
+  if (legendEl) {
+    legendEl.innerHTML = buildLegendHtml();
+  }
 };
 window.addEventListener("load", () => {
   setTimeout(() => map.invalidateSize(), 800);
@@ -245,6 +270,34 @@ const setLegendVisibility = (visible) => {
   }
 };
 
+const updateCategoryFilterOptions = () => {
+  const names = getCategoryEntries().map(([name]) => name);
+  const applyOptions = (selectEl) => {
+    if (!selectEl) return;
+    const previous = selectEl.value;
+    selectEl.innerHTML = "";
+    const allOption = document.createElement("option");
+    allOption.value = "all";
+    allOption.textContent = "すべて";
+    selectEl.appendChild(allOption);
+    names.forEach(name => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      selectEl.appendChild(option);
+    });
+    if (previous && (previous === "all" || names.includes(previous))) {
+      selectEl.value = previous;
+    } else {
+      selectEl.value = "all";
+    }
+  };
+  applyOptions(categoryFilter);
+  applyOptions(statsCategoryFilterEl);
+};
+
+updateCategoryFilterOptions();
+
 const formatInputDate = (date) => date.toISOString().slice(0, 10);
 const formatRangeLabel = (date) => `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")}`;
 const formatCurrency = (value = 0) => `¥${Math.round(value).toLocaleString()}`;
@@ -254,9 +307,14 @@ const formatDateYMD = (date) => {
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
+const formatTimeHM = (date) => {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+};
 const formatRating = (value) => {
-  if (!Number.isFinite(value) || value <= 0) return "未評価";
-  return `★${value}`;
+  if (typeof value === "string" && value.trim()) return value;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric) || numeric <= 0) return "未評価";
+  return "★".repeat(Math.min(5, numeric));
 };
 
 let cachedLogs = [];
@@ -287,6 +345,7 @@ let playerStatusState = { ...PLAYER_STATUS_DEFAULTS };
 let budgetsData = {};
 let budgetCursor = { year: null, month: null };
 let legendVisible = false;
+let unsubscribeCategorySettings = null;
 
 const updatePlayerStatus = (partial = {}) => {
   playerStatusState = { ...playerStatusState, ...partial };
@@ -303,6 +362,34 @@ const updatePlayerStatus = (partial = {}) => {
 
 window.updatePlayerStatus = updatePlayerStatus;
 updatePlayerStatus();
+
+const subscribeCategorySettings = () => {
+  if (unsubscribeCategorySettings) return;
+  unsubscribeCategorySettings = categoriesCollectionRef.orderBy("name").onSnapshot(snapshot => {
+    if (snapshot.empty) {
+      categoryColors = { ...DEFAULT_CATEGORY_SETTINGS };
+    } else {
+      const next = {};
+      snapshot.forEach(doc => {
+        const data = doc.data() || {};
+        const name = data.name || doc.id;
+        if (!name) return;
+        next[name] = { color: data.color || DEFAULT_CATEGORY_SETTINGS[name]?.color || "#999" };
+      });
+      categoryColors = Object.keys(next).length ? next : { ...DEFAULT_CATEGORY_SETTINGS };
+    }
+    updateLegendContent();
+    updateCategoryFilterOptions();
+    renderLogs();
+    renderExpenseStats();
+    renderBudgetView();
+  }, (error) => {
+    console.error("カテゴリの取得に失敗しました:", error);
+    categoryColors = { ...DEFAULT_CATEGORY_SETTINGS };
+    updateLegendContent();
+    updateCategoryFilterOptions();
+  });
+};
 
 const setDisplayRangeByPreset = (key, options = {}) => {
   displayPresetKey = key;
@@ -579,23 +666,26 @@ const renderLogs = async () => {
     visibleLogs.push(log);
     const logDate = log.timestamp;
     const logDateStr = formatDateYMD(logDate);
+    const logTimeStr = formatTimeHM(logDate);
     const locationText = log.locationName || "不明な場所";
     const popupHtml = `
       <div class="log-popup">
-        <strong>${logDateStr}</strong><br>
-        場所：${locationText}<br>
-        評価：${formatRating(log.stars)}<br>
-        メモ：${log.memo || "（メモなし）"}<br>
-        出費：${formatCurrency(log.amount)}
+        <div class="log-popup-row">日付：${logDateStr}</div>
+        <div class="log-popup-row">時刻：${logTimeStr}</div>
+        <div class="log-popup-row">場所：${locationText}</div>
+        <div class="log-popup-row">メモ：${log.memo || "（メモなし）"}</div>
+        <div class="log-popup-row">評価：${formatRating(log.stars)}</div>
+        <div class="log-popup-row">出費：${formatCurrency(log.amount)}</div>
       </div>
     `;
-    const marker = L.circleMarker([log.lat, log.lng], {
-      radius: 5,
-      fillColor: CATEGORY_SETTINGS[category]?.color || "#999",
-      color: "#000",
-      weight: 1,
-      opacity: 0.9,
-      fillOpacity: 0.85
+    const fillColor = getCategoryColor(category);
+    const marker = L.marker([log.lat, log.lng], {
+      icon: L.divIcon({
+        className: "log-marker",
+        iconSize: [30, 30],
+        iconAnchor: [15, 15],
+        html: `<span class="log-marker-dot" style="background:${fillColor};"></span>`
+      })
     }).addTo(map).bindPopup(popupHtml);
     markers.push(marker);
   });
@@ -604,6 +694,7 @@ const renderLogs = async () => {
   if (latest && Number.isFinite(latest.lat) && Number.isFinite(latest.lng)) {
     const jst = latest.timestamp;
     const dateStr = formatDateYMD(jst);
+    const timeStr = formatTimeHM(jst);
     let addressText = "取得中...";
     try {
       const res = await rateLimitedFetch(`https://nominatim.openstreetmap.org/reverse?lat=${latest.lat}&lon=${latest.lng}&format=json`);
@@ -616,11 +707,12 @@ const renderLogs = async () => {
     const popupLocation = latest.locationName || addressText || "不明な場所";
     const popupHtml = `
       <div class="log-popup">
-        <strong>${dateStr}</strong><br>
-        場所：${popupLocation}<br>
-        評価：${formatRating(latest.stars)}<br>
-        メモ：${latest.memo || "（メモなし）"}<br>
-        出費：${formatCurrency(latest.amount)}
+        <div class="log-popup-row">日付：${dateStr}</div>
+        <div class="log-popup-row">時刻：${timeStr}</div>
+        <div class="log-popup-row">場所：${popupLocation}</div>
+        <div class="log-popup-row">メモ：${latest.memo || "（メモなし）"}</div>
+        <div class="log-popup-row">評価：${formatRating(latest.stars)}</div>
+        <div class="log-popup-row">出費：${formatCurrency(latest.amount)}</div>
       </div>
     `;
     if (latestMarker) map.removeLayer(latestMarker);
@@ -710,7 +802,7 @@ function updateExpenseChart(logs, totals) {
   const sorted = Object.entries(breakdown).sort((a, b) => b[1] - a[1]);
   const labels = sorted.length ? sorted.map(([cat]) => cat) : ["データなし"];
   const data = sorted.length ? sorted.map(([, value]) => value) : [0];
-  const colors = labels.map(cat => CATEGORY_SETTINGS[cat]?.color || "#7f8c8d");
+  const colors = labels.map(cat => getCategoryColor(cat) || "#7f8c8d");
   const counts = logs.reduce((acc, log) => {
     const cat = log.amount_category || "その他";
     acc[cat] = (acc[cat] || 0) + 1;
@@ -856,7 +948,10 @@ function renderBudgetView() {
     return acc;
   }, {});
 
-  const categories = Object.keys(CATEGORY_SETTINGS);
+  let categories = Object.keys(categoryColors);
+  if (!categories.length) {
+    categories = Object.keys(DEFAULT_CATEGORY_SETTINGS);
+  }
   if (!categories.length) {
     budgetListEl.innerHTML = "<li>カテゴリが見つかりません。</li>";
     return;
@@ -960,5 +1055,6 @@ function renderInvestment() {
 activateMainTab("stats");
 setDefaultRange();
 setStatsRangeByPreset("30", true);
+subscribeCategorySettings();
 renderExpenseStats();
 renderBudgetView();
