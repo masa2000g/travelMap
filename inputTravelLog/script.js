@@ -20,17 +20,17 @@ const PLAYER_STATUS_DEFAULTS = {
   condition: ""
 };
 const DEFAULT_CATEGORIES = [
-  { name: "食費", color: "#e74c3c" },
-  { name: "交通費", color: "#3498db" },
-  { name: "作業", color: "#2ecc71" },
-  { name: "温泉", color: "#e67e22" },
-  { name: "観光費", color: "#9b59b6" },
-  { name: "買い物", color: "#ff1493" },
-  { name: "宿泊費", color: "#1abc9c" },
-  { name: "その他", color: "#bdc3c7" },
-  { name: "起床", color: "#fffb96" },
-  { name: "就寝", color: "#6c5ce7" },
-  { name: "給油", color: "#f1c40f" }
+  { name: "食費", color: "#e74c3c", order: 10 },
+  { name: "交通費", color: "#3498db", order: 20 },
+  { name: "作業", color: "#2ecc71", order: 30 },
+  { name: "温泉", color: "#e67e22", order: 40 },
+  { name: "観光費", color: "#9b59b6", order: 50 },
+  { name: "買い物", color: "#ff1493", order: 60 },
+  { name: "宿泊費", color: "#1abc9c", order: 70 },
+  { name: "その他", color: "#bdc3c7", order: 80 },
+  { name: "起床", color: "#fffb96", order: 90 },
+  { name: "就寝", color: "#6c5ce7", order: 100 },
+  { name: "給油", color: "#f1c40f", order: 110 }
 ];
 const DEFAULT_CATEGORY_MAP = DEFAULT_CATEGORIES.reduce((map, item) => {
   map[item.name] = item.color;
@@ -122,6 +122,25 @@ let unsubscribeCategories = null;
 let categoriesData = [];
 let editingCategoryId = null;
 let categoriesSeeded = false;
+let draggingCategoryId = null;
+let isApplyingOrder = false;
+
+const sortCategoriesByOrder = (list) => {
+  return [...list].sort((a, b) => {
+    const aOrder = Number.isFinite(a.order) ? a.order : Number.MAX_SAFE_INTEGER;
+    const bOrder = Number.isFinite(b.order) ? b.order : Number.MAX_SAFE_INTEGER;
+    if (aOrder !== bOrder) return aOrder - bOrder;
+    return (a.name || "").localeCompare(b.name || "", "ja");
+  });
+};
+
+const getNextCategoryOrder = () => {
+  const list = categoriesData.length ? categoriesData : DEFAULT_CATEGORIES;
+  const sorted = sortCategoriesByOrder(list);
+  const last = sorted[sorted.length - 1];
+  const lastOrder = Number.isFinite(last?.order) ? last.order : sorted.length * 10;
+  return lastOrder + 10;
+};
 
 const formatTimestamp = (value) => {
   if (!value) return "";
@@ -177,7 +196,7 @@ const submitQuickLog = async ({ locationName, memo = "", category, amount = null
   }
 };
 
-const getEffectiveCategories = () => (categoriesData.length ? categoriesData : DEFAULT_CATEGORIES);
+const getEffectiveCategories = () => sortCategoriesByOrder(categoriesData.length ? categoriesData : DEFAULT_CATEGORIES);
 
 const populateCategorySelectOptions = () => {
   if (!categorySelect) return;
@@ -210,57 +229,108 @@ const renderCategoryList = () => {
     return;
   }
   categoriesListEl.innerHTML = "";
-  categories.forEach(cat => {
+  categories.forEach((cat, index) => {
+    const isEditing = editingCategoryId === (cat.id || cat.name);
     const li = document.createElement("li");
-    const info = document.createElement("div");
-    info.className = "category-info";
-    const swatch = document.createElement("span");
-    swatch.className = "category-color-swatch";
-    swatch.style.background = cat.color || DEFAULT_CATEGORY_MAP[cat.name] || "#cccccc";
-    const label = document.createElement("span");
-    label.textContent = cat.name;
-    info.appendChild(swatch);
-    info.appendChild(label);
-    li.appendChild(info);
     const docId = cat.id || cat.name;
-    if (docId) {
-      const actions = document.createElement("div");
-      actions.className = "category-actions";
-      const editBtn = document.createElement("button");
-      editBtn.type = "button";
-      editBtn.textContent = "編集";
-      editBtn.addEventListener("click", () => startCategoryEdit({ ...cat, id: docId }));
-      const deleteBtn = document.createElement("button");
-      deleteBtn.type = "button";
-      deleteBtn.textContent = "削除";
-      deleteBtn.addEventListener("click", () => handleCategoryDelete({ ...cat, id: docId }));
-      actions.appendChild(editBtn);
-      actions.appendChild(deleteBtn);
-      li.appendChild(actions);
+    li.dataset.id = docId;
+    li.dataset.order = Number.isFinite(cat.order) ? cat.order : (index + 1) * 10;
+    li.className = "category-row";
+    li.draggable = !isEditing;
+
+    const dragHandle = document.createElement("span");
+    dragHandle.className = "drag-handle";
+    dragHandle.textContent = "≡";
+    dragHandle.title = "ドラッグで並び替え";
+    li.appendChild(dragHandle);
+
+    if (isEditing) {
+      li.classList.add("editing");
+      li.draggable = false;
+      const editFields = document.createElement("div");
+      editFields.className = "category-edit-fields";
+      const nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.value = cat.name || "";
+      nameInput.placeholder = "カテゴリ名";
+      const colorInput = document.createElement("input");
+      colorInput.type = "color";
+      colorInput.value = cat.color || DEFAULT_CATEGORY_MAP[cat.name] || "#ffcc00";
+      editFields.appendChild(nameInput);
+      editFields.appendChild(colorInput);
+
+      const editActions = document.createElement("div");
+      editActions.className = "category-actions";
+      const saveBtn = document.createElement("button");
+      saveBtn.type = "button";
+      saveBtn.textContent = "保存";
+      const cancelBtn = document.createElement("button");
+      cancelBtn.type = "button";
+      cancelBtn.className = "ghost-btn";
+      cancelBtn.textContent = "キャンセル";
+
+      saveBtn.addEventListener("click", () => handleInlineCategorySave({
+        id: docId,
+        nameInput,
+        colorInput
+      }));
+      cancelBtn.addEventListener("click", cancelInlineCategoryEdit);
+
+      editActions.appendChild(saveBtn);
+      editActions.appendChild(cancelBtn);
+
+      li.appendChild(editFields);
+      li.appendChild(editActions);
+    } else {
+      const info = document.createElement("div");
+      info.className = "category-info";
+      const swatch = document.createElement("span");
+      swatch.className = "category-color-swatch";
+      swatch.style.background = cat.color || DEFAULT_CATEGORY_MAP[cat.name] || "#cccccc";
+      const label = document.createElement("span");
+      label.textContent = cat.name;
+      info.appendChild(swatch);
+      info.appendChild(label);
+      li.appendChild(info);
+      if (docId) {
+        const actions = document.createElement("div");
+        actions.className = "category-actions";
+        const editBtn = document.createElement("button");
+        editBtn.type = "button";
+        editBtn.textContent = "編集";
+        editBtn.addEventListener("click", () => startInlineCategoryEdit(docId));
+        const deleteBtn = document.createElement("button");
+        deleteBtn.type = "button";
+        deleteBtn.textContent = "削除";
+        deleteBtn.addEventListener("click", () => handleCategoryDelete({ ...cat, id: docId }));
+        actions.appendChild(editBtn);
+        actions.appendChild(deleteBtn);
+        li.appendChild(actions);
+      }
     }
     categoriesListEl.appendChild(li);
   });
+  attachCategoryDragHandlers();
 };
 
-const startCategoryEdit = (cat) => {
-  editingCategoryId = cat.id || cat.name;
-  if (categoryNameInput) categoryNameInput.value = cat.name || "";
-  if (categoryColorInput) categoryColorInput.value = cat.color || DEFAULT_CATEGORY_MAP[cat.name] || "#ffcc00";
-  const saveBtn = document.getElementById("categorySaveBtn");
-  if (saveBtn) saveBtn.textContent = "カテゴリを更新";
+const startInlineCategoryEdit = (categoryId) => {
+  editingCategoryId = categoryId;
+  renderCategoryList();
   if (categoryManagerSection) {
     categoryManagerSection.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 };
 
-const resetCategoryForm = () => {
+const cancelInlineCategoryEdit = () => {
   editingCategoryId = null;
+  renderCategoryList();
+};
+
+const resetCategoryForm = () => {
   if (categoryForm) {
     categoryForm.reset();
   }
   if (categoryColorInput) categoryColorInput.value = "#ffcc00";
-  const saveBtn = document.getElementById("categorySaveBtn");
-  if (saveBtn) saveBtn.textContent = "カテゴリを保存";
 };
 
 const handleCategoryDelete = (cat) => {
@@ -272,11 +342,116 @@ const handleCategoryDelete = (cat) => {
   });
 };
 
+const handleInlineCategorySave = async ({ id, nameInput, colorInput }) => {
+  if (!id) return;
+  const name = nameInput.value.trim();
+  const color = colorInput.value || "#ffcc00";
+  if (!name) {
+    alert("カテゴリ名を入力してください。");
+    return;
+  }
+  const duplicate = categoriesData.some(cat => cat.id !== id && cat.name === name);
+  if (duplicate) {
+    alert("同名のカテゴリが既に存在します。");
+    return;
+  }
+  nameInput.disabled = true;
+  colorInput.disabled = true;
+  try {
+    await categoriesCollectionRef.doc(id).set({ name, color }, { merge: true });
+    editingCategoryId = null;
+    renderCategoryList();
+  } catch (error) {
+    alert("カテゴリの保存に失敗しました: " + error.message);
+  } finally {
+    nameInput.disabled = false;
+    colorInput.disabled = false;
+  }
+};
+
+const persistCategoryOrder = async (orderedIds) => {
+  if (!orderedIds.length || isApplyingOrder) return;
+  isApplyingOrder = true;
+  const batch = db.batch();
+  orderedIds.forEach(({ id, order }) => {
+    batch.set(categoriesCollectionRef.doc(id), { order }, { merge: true });
+  });
+  try {
+    await batch.commit();
+  } catch (error) {
+    alert("並び替えの保存に失敗しました: " + error.message);
+  } finally {
+    isApplyingOrder = false;
+  }
+};
+
+const attachCategoryDragHandlers = () => {
+  if (!categoriesListEl) return;
+  const listItems = Array.from(categoriesListEl.querySelectorAll("li"));
+  listItems.forEach(li => {
+    li.removeEventListener("dragstart", handleDragStart);
+    li.removeEventListener("dragover", handleDragOver);
+    li.removeEventListener("drop", handleDrop);
+    li.removeEventListener("dragend", handleDragEnd);
+    const isEditingRow = li.classList.contains("editing");
+    li.draggable = !isEditingRow;
+    li.addEventListener("dragstart", handleDragStart);
+    li.addEventListener("dragover", handleDragOver);
+    li.addEventListener("drop", handleDrop);
+    li.addEventListener("dragend", handleDragEnd);
+  });
+};
+
+const handleDragStart = (event) => {
+  const li = event.currentTarget;
+  if (!li || !li.dataset.id) return;
+  draggingCategoryId = li.dataset.id;
+  li.classList.add("dragging");
+  event.dataTransfer.setData("text/plain", draggingCategoryId);
+  event.dataTransfer.effectAllowed = "move";
+};
+
+const handleDragOver = (event) => {
+  event.preventDefault();
+  const target = event.currentTarget;
+  if (!draggingCategoryId || !target || target.dataset.id === draggingCategoryId) return;
+  const draggingEl = categoriesListEl.querySelector("li.dragging");
+  if (!draggingEl) return;
+  const rect = target.getBoundingClientRect();
+  const shouldPlaceBefore = event.clientY < rect.top + rect.height / 2;
+  if (shouldPlaceBefore) {
+    categoriesListEl.insertBefore(draggingEl, target);
+  } else {
+    categoriesListEl.insertBefore(draggingEl, target.nextSibling);
+  }
+};
+
+const handleDrop = (event) => {
+  event.preventDefault();
+};
+
+const handleDragEnd = async () => {
+  const draggingEl = categoriesListEl.querySelector("li.dragging");
+  if (draggingEl) draggingEl.classList.remove("dragging");
+  const newOrder = Array.from(categoriesListEl.querySelectorAll("li")).map((li, index) => ({
+    id: li.dataset.id,
+    order: (index + 1) * 10
+  }));
+  draggingCategoryId = null;
+  const changed = newOrder.some(item => {
+    const found = categoriesData.find(cat => cat.id === item.id);
+    return found && found.order !== item.order;
+  });
+  if (changed) {
+    await persistCategoryOrder(newOrder);
+  }
+};
+
 const seedDefaultCategories = async () => {
   const batch = db.batch();
   DEFAULT_CATEGORIES.forEach(cat => {
     const docRef = categoriesCollectionRef.doc(cat.name);
-    batch.set(docRef, { name: cat.name, color: cat.color }, { merge: true });
+    batch.set(docRef, { name: cat.name, color: cat.color, order: cat.order }, { merge: true });
   });
   try {
     await batch.commit();
@@ -287,7 +462,7 @@ const seedDefaultCategories = async () => {
 
 const subscribeCategories = () => {
   if (!categoryManagerSection || unsubscribeCategories) return;
-  unsubscribeCategories = categoriesCollectionRef.orderBy("name").onSnapshot(async snapshot => {
+  unsubscribeCategories = categoriesCollectionRef.orderBy("order").onSnapshot(async snapshot => {
     if (snapshot.empty) {
       if (!categoriesSeeded) {
         categoriesSeeded = true;
@@ -295,14 +470,28 @@ const subscribeCategories = () => {
       }
       categoriesData = DEFAULT_CATEGORIES.map(cat => ({ ...cat, id: cat.name }));
     } else {
-      categoriesData = snapshot.docs.map(doc => {
+      const mapped = snapshot.docs.map(doc => {
         const data = doc.data() || {};
         return {
           id: doc.id,
           name: data.name || doc.id,
-          color: data.color || DEFAULT_CATEGORY_MAP[data.name] || "#cccccc"
+          color: data.color || DEFAULT_CATEGORY_MAP[data.name] || "#cccccc",
+          order: Number.isFinite(data.order) ? data.order : null
         };
       });
+      const existingOrders = mapped.filter(cat => Number.isFinite(cat.order));
+      let maxOrder = existingOrders.length ? Math.max(...existingOrders.map(cat => cat.order)) : 0;
+      const missingOrder = mapped.filter(cat => !Number.isFinite(cat.order)).sort((a, b) => a.name.localeCompare(b.name, "ja"));
+      if (missingOrder.length) {
+        const batch = db.batch();
+        missingOrder.forEach(cat => {
+          maxOrder += 10;
+          batch.set(categoriesCollectionRef.doc(cat.id), { order: maxOrder }, { merge: true });
+          cat.order = maxOrder;
+        });
+        await batch.commit();
+      }
+      categoriesData = sortCategoriesByOrder(mapped);
     }
     renderCategoryList();
     populateCategorySelectOptions();
@@ -691,23 +880,20 @@ async function handleCategorySubmit(event) {
     return;
   }
   const color = categoryColorInput.value || "#ffcc00";
-  const duplicate = categoriesData.some(cat => cat.name === name && cat.id !== editingCategoryId);
+  const duplicate = categoriesData.some(cat => cat.name === name);
   if (duplicate) {
     alert("同名のカテゴリが既に存在します。");
     return;
   }
-  const payload = { name, color };
+  const payload = {
+    name,
+    color,
+    order: getNextCategoryOrder(),
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
   try {
-    if (editingCategoryId) {
-      await categoriesCollectionRef.doc(editingCategoryId).set(payload, { merge: true });
-      alert("カテゴリを更新しました。");
-    } else {
-      await categoriesCollectionRef.add({
-        ...payload,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      alert("カテゴリを追加しました。");
-    }
+    await categoriesCollectionRef.add(payload);
+    alert("カテゴリを追加しました。");
     resetCategoryForm();
   } catch (error) {
     alert("カテゴリの保存に失敗しました: " + error.message);

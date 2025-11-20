@@ -176,7 +176,8 @@ button:hover {
 .categories-list li {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 12px;
   padding: 10px;
   background: #fff;
   border: 1px solid #ddd;
@@ -199,12 +200,51 @@ button:hover {
 .category-actions {
   display: flex;
   gap: 6px;
+  margin-left: auto;
 }
 
 .category-actions button {
   width: auto;
   padding: 6px 10px;
   font-size: 12px;
+}
+
+.category-row {
+  display: flex;
+  align-items: center;
+}
+
+.category-row.dragging {
+  opacity: 0.6;
+  border-style: dashed;
+}
+
+.category-row.editing {
+  background: #f7f9ff;
+  border-color: #cfe0ff;
+}
+
+.drag-handle {
+  cursor: grab;
+  color: #888;
+  font-size: 18px;
+  padding: 0 6px;
+  user-select: none;
+}
+
+.category-info {
+  flex: 1;
+}
+
+.category-edit-fields {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.category-edit-fields input[type="text"] {
+  flex: 1;
 }
 
 .category-form-actions {
