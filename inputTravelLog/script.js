@@ -19,26 +19,6 @@ const PLAYER_STATUS_DEFAULTS = {
   condition: ""
 };
 
-const createRateLimitedFetch = (intervalMs = 1500) => {
-  let lastTime = 0;
-  let queue = Promise.resolve();
-  return (url, options) => {
-    const run = queue.then(async () => {
-      const elapsed = Date.now() - lastTime;
-      const wait = Math.max(0, intervalMs - elapsed);
-      if (wait) {
-        await new Promise(resolve => setTimeout(resolve, wait));
-      }
-      lastTime = Date.now();
-      return fetch(url, options);
-    });
-    queue = run.catch(() => {});
-    return run;
-  };
-};
-
-const rateLimitedNominatimFetch = createRateLimitedFetch(1500);
-
 // --- DOM Elements ---
 const loginSection = document.getElementById('login-section');
 const appSection = document.getElementById('app-section');
@@ -48,10 +28,10 @@ const appForm = document.getElementById('appForm');
 const statusEl = document.getElementById('status');
 const logContainer = document.getElementById('logContainer');
 const stars = document.querySelectorAll('.star-rating .star');
-const locationSearchInput = document.getElementById('location-search');
-const locationSearchBtn = document.getElementById('location-search-btn');
-const locationResultsEl = document.getElementById('location-results');
 const locationNameInput = document.getElementById('locationNameInput');
+const actionInput = document.getElementById('actionInput');
+const categorySelect = document.getElementById('categorySelect');
+const amountInputEl = document.getElementById('amountInput');
 const statusEditorSection = document.getElementById('status-editor');
 const statusForm = document.getElementById('statusForm');
 const statusSaveState = document.getElementById('statusSaveState');
@@ -66,12 +46,121 @@ const budgetEditorSection = document.getElementById('budget-editor');
 const budgetForm = document.getElementById('budgetForm');
 const budgetSaveState = document.getElementById('budgetSaveState');
 const budgetInputs = document.querySelectorAll('[data-budget-category]');
+const tabButtons = document.querySelectorAll('[data-tab-target]');
+const tabPanels = document.querySelectorAll('.tab-panel');
+const logSubmitBtn = document.getElementById('logSubmitBtn');
+const formModeBanner = document.getElementById('formModeBanner');
+const formModeText = document.getElementById('formModeText');
+const cancelEditBtn = document.getElementById('cancelEditBtn');
+const clearRatingBtn = document.getElementById('clearRatingBtn');
+
+const setActiveTab = (targetId) => {
+  tabButtons.forEach(button => {
+    const isActive = button.dataset.tabTarget === targetId;
+    button.classList.toggle('active', isActive);
+  });
+  tabPanels.forEach(panel => {
+    panel.classList.toggle('active', panel.id === targetId);
+  });
+};
+
+tabButtons.forEach(button => {
+  button.addEventListener('click', () => setActiveTab(button.dataset.tabTarget));
+});
+
+setActiveTab('logTab');
 
 let currentRating = null;
 let currentLat = null;
 let currentLng = null;
 let unsubscribePlayerStatus = null;
 let unsubscribeBudgets = null;
+let editingLogId = null;
+let editingMetadata = null;
+
+const formatTimestamp = (value) => {
+  if (!value) return "";
+  const dateValue = typeof value.toDate === "function" ? value.toDate() : new Date(value);
+  return Number.isNaN(dateValue.getTime()) ? "" : dateValue.toLocaleString();
+};
+
+const normalizeTimestamp = (value) => {
+  if (!value) return new Date().toISOString();
+  if (typeof value === "string") return value;
+  if (typeof value.toDate === "function") {
+    return value.toDate().toISOString();
+  }
+  return value;
+};
+
+const setStarSelection = (value) => {
+  stars.forEach(s => {
+    const starValue = parseInt(s.dataset.value, 10);
+    s.classList.toggle("selected", value !== null && starValue <= value);
+  });
+};
+
+const resetFormFields = () => {
+  appForm.reset();
+  currentRating = null;
+  setStarSelection(null);
+};
+
+const exitEditingMode = () => {
+  editingLogId = null;
+  editingMetadata = null;
+  if (formModeBanner) {
+    formModeBanner.hidden = true;
+  }
+  if (logSubmitBtn) {
+    logSubmitBtn.textContent = "送信する";
+  }
+};
+
+const resetFormState = () => {
+  resetFormFields();
+  exitEditingMode();
+};
+
+const beginEditLogEntry = (docId, entry) => {
+  setActiveTab('logTab');
+  editingLogId = docId;
+  editingMetadata = {
+    lat: entry.lat ?? null,
+    lng: entry.lng ?? null,
+    timestamp: normalizeTimestamp(entry.timestamp)
+  };
+  locationNameInput.value = entry.locationName || '';
+  actionInput.value = entry.memo || '';
+  if (categorySelect) {
+    if (entry.amount_category) {
+      categorySelect.value = entry.amount_category;
+    } else {
+      categorySelect.selectedIndex = 0;
+    }
+  }
+  if (entry.amount !== undefined && entry.amount !== null) {
+    amountInputEl.value = entry.amount;
+  } else {
+    amountInputEl.value = '';
+  }
+  currentRating = entry.stars ?? null;
+  setStarSelection(currentRating);
+  if (formModeBanner && formModeText) {
+    formModeText.textContent = `${entry.locationName || '名称未設定'} を編集中`;
+    formModeBanner.hidden = false;
+  }
+  if (logSubmitBtn) {
+    logSubmitBtn.textContent = "更新する";
+  }
+  if (typeof appForm.scrollIntoView === 'function') {
+    appForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+};
+
+if (cancelEditBtn) {
+  cancelEditBtn.addEventListener('click', resetFormState);
+}
 
 // --- Authentication ---
 loginBtn.addEventListener('click', () => {
@@ -97,6 +186,7 @@ auth.onAuthStateChanged(user => {
     appSection.style.display = 'none';
     teardownPlayerStatusSubscription();
     teardownBudgetsSubscription();
+    resetFormState();
     if (statusEditorSection) {
       statusEditorSection.style.display = 'none';
     }
@@ -113,7 +203,6 @@ function initializeAppData() {
     currentLat = pos.coords.latitude;
     currentLng = pos.coords.longitude;
     statusEl.textContent = `位置情報取得成功：${currentLat.toFixed(4)}, ${currentLng.toFixed(4)}`;
-    searchNearbyPlaces(null, currentLat, currentLng); // Auto-search on load
   }, () => {
     statusEl.textContent = "位置情報の取得に失敗しました。";
   });
@@ -134,35 +223,38 @@ function setupEventListeners() {
   // Star Rating
   stars.forEach(star => {
     star.addEventListener('click', () => {
-      currentRating = parseInt(star.dataset.value);
-      stars.forEach(s => {
-        s.classList.toggle('selected', parseInt(s.dataset.value) <= currentRating);
-      });
+      const value = parseInt(star.dataset.value, 10);
+      currentRating = value;
+      setStarSelection(currentRating);
     });
   });
 
-  // Location Search
-  locationSearchBtn.addEventListener('click', () => {
-    const query = locationSearchInput.value;
-    if (query && currentLat && currentLng) {
-      searchNearbyPlaces(query, currentLat, currentLng);
-    }
-  });
+  if (clearRatingBtn) {
+    clearRatingBtn.addEventListener('click', () => {
+      currentRating = null;
+      setStarSelection(null);
+    });
+  }
 
   // Form Submission
   appForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
     const locationName = locationNameInput.value;
-    const memo = document.getElementById("actionInput").value;
-    const category = document.getElementById("categorySelect").value;
-    const amountInput = document.getElementById("amountInput").value;
-    const amount = amountInput === "" ? null : parseInt(amountInput);
+    const memo = actionInput.value;
+    const category = categorySelect.value;
+    const amountValue = amountInputEl.value;
+    const amount = amountValue === "" ? null : parseInt(amountValue, 10);
 
     if (!locationName || !category) {
       alert("場所の名前とカテゴリは必須です。");
       return;
     }
+
+    const isEditing = Boolean(editingLogId);
+    const latToUse = isEditing ? (editingMetadata?.lat ?? currentLat) : currentLat;
+    const lngToUse = isEditing ? (editingMetadata?.lng ?? currentLng) : currentLng;
+    const timestampToUse = isEditing ? (editingMetadata?.timestamp ?? new Date().toISOString()) : new Date().toISOString();
 
     const data = {
       stars: currentRating,
@@ -170,19 +262,20 @@ function setupEventListeners() {
       memo: memo,
       amount_category: category,
       amount: amount,
-      lat: currentLat,
-      lng: currentLng,
-      timestamp: new Date().toISOString()
+      lat: latToUse,
+      lng: lngToUse,
+      timestamp: timestampToUse
     };
 
     try {
-      await db.collection('logs').add(data);
-      alert("送信完了！");
-      // Reset form
-      appForm.reset();
-      currentRating = null;
-      stars.forEach(s => s.classList.remove('selected'));
-      locationResultsEl.innerHTML = '';
+      if (isEditing) {
+        await db.collection('logs').doc(editingLogId).update(data);
+        alert("更新完了！");
+      } else {
+        await db.collection('logs').add(data);
+        alert("送信完了！");
+      }
+      resetFormState();
     } catch (error) {
       alert("送信に失敗しました: " + error.message);
     }
@@ -304,54 +397,6 @@ async function handleBudgetSubmit(event) {
   }
 }
 
-// --- Location Search (Nominatim) ---
-async function searchNearbyPlaces(query, lat, lng) {
-  let url;
-  if (query) {
-    // Search with a query
-    url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=10&viewbox=${lng-0.1},${lat-0.1},${lng+0.1},${lat+0.1}&bounded=1`;
-  } else {
-    // Reverse search for nearby POIs
-    url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&zoom=18&addressdetails=1`;
-  }
-  
-  try {
-    const res = await rateLimitedNominatimFetch(url);
-    const data = await res.json();
-    
-    let places = [];
-    if (query && Array.isArray(data)) {
-        places = data;
-    } else if (!query && data.display_name) {
-        // For reverse geocoding, we can suggest the main result and then search nearby
-        places.push(data);
-        // Let's also do a search for nearby amenities for more options
-        const amenitiesRes = await rateLimitedNominatimFetch(`https://nominatim.openstreetmap.org/search?q=amenity&format=json&limit=10&viewbox=${lng-0.01},${lat-0.01},${lng+0.01},${lat+0.01}&bounded=1`);
-        const amenitiesData = await amenitiesRes.json();
-        places = places.concat(amenitiesData);
-    }
-
-    locationResultsEl.innerHTML = '';
-    if (places.length > 0) {
-      places.forEach(place => {
-        const item = document.createElement('div');
-        item.className = 'location-result-item';
-        item.textContent = place.display_name;
-        item.addEventListener('click', () => {
-          locationNameInput.value = place.display_name.split(',')[0]; // Take the most relevant part of the name
-          locationResultsEl.innerHTML = ''; // Hide results after selection
-        });
-        locationResultsEl.appendChild(item);
-      });
-    } else {
-      locationResultsEl.textContent = '周辺に施設が見つかりません。';
-    }
-  } catch (e) {
-    console.error("Location search failed", e);
-    locationResultsEl.textContent = '場所の検索に失敗しました。';
-  }
-}
-
 // --- Log Display (from Firestore) ---
 function displayLogs() {
   db.collection('logs').orderBy('timestamp', 'desc').onSnapshot(snapshot => {
@@ -364,15 +409,20 @@ function displayLogs() {
       const entry = doc.data();
       const div = document.createElement("div");
       div.className = "log-entry";
+      div.dataset.docId = doc.id;
+      const latText = typeof entry.lat === 'number' ? entry.lat.toFixed(4) : '--';
+      const lngText = typeof entry.lng === 'number' ? entry.lng.toFixed(4) : '--';
+      const timestampText = formatTimestamp(entry.timestamp) || '日時不明';
       div.innerHTML = `
-        <strong>${new Date(entry.timestamp).toLocaleString()}</strong><br>
+        <strong>${timestampText}</strong><br>
         場所：${entry.locationName || 'N/A'}<br>
         評価：${entry.stars ? '★'.repeat(entry.stars) : '未評価'}<br>
         メモ：${entry.memo || '（メモなし）'}<br>
         カテゴリ：${entry.amount_category || "未設定"}<br>
         金額：¥${entry.amount !== null ? entry.amount : '---'}<br>
-        <small>緯度：${entry.lat.toFixed(4)}, 経度：${entry.lng.toFixed(4)}</small>
+        <small>緯度：${latText}, 経度：${lngText}</small>
       `;
+      div.addEventListener('click', () => beginEditLogEntry(doc.id, entry));
       logContainer.appendChild(div);
     });
   });

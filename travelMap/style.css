@@ -6,6 +6,7 @@ html, body {
   background: #000;
   color: #fff;
   overflow: hidden;
+  font-size: 18px;
 }
 
 *, *::before, *::after {
@@ -35,12 +36,14 @@ html, body {
   pointer-events: none;
   z-index: 900;
   padding: 0 12px;
+  overflow-x: auto;
 }
 
 .overlay-frame {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   padding: 18px 16px 12px;
+  flex-wrap: nowrap;
   border: 2px solid transparent;
   border-radius: 16px;
   background: transparent;
@@ -48,31 +51,34 @@ html, body {
 }
 
 .info-box {
-  flex: 0 1 auto;
+  flex: 1 1 auto;
+  min-width: 0;
   width: auto;
   background: rgba(0, 0, 0, 0.85);
   border: 2px solid #fff;
   border-radius: 12px;
-  padding: 12px 14px 10px;
+  --title-height: 14px;
+  padding: calc(var(--title-height) + 10px) 16px 12px;
+  margin-top: calc(var(--title-height) / 2.2);
   color: #fff;
-  font-size: 12px;
+  font-size: 14px;
   position: relative;
   pointer-events: auto;
   box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
 }
 
 #statusBox {
-  width: 220px;
+  flex: 3 1 0;
+  max-width: 40%;
   min-width: 140px;
-  padding-top: 18px;
 }
 
 .status-row {
   display: flex;
   align-items: baseline;
   gap: 4px;
-  font-size: 11.5px;
-  margin-bottom: 2px;
+  font-size: 13px;
+  margin-bottom: 1.5px;
 }
 
 .status-label {
@@ -92,77 +98,85 @@ html, body {
 }
 
 .menu-box {
-  width: 220px;
-  padding-top: 18px;
+  flex: 7 1 0;
+  max-width: 60%;
+  padding-bottom: 8px;
 }
 
 .box-title {
   position: absolute;
-  top: -14px;
+  top: 0;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   background: #000;
   border: 2px solid #fff;
   border-radius: 6px;
-  padding: 2px 8px;
+  width: 80px;
+  padding: 4px 8px;
   font-size: 13px;
   font-weight: bold;
+  text-align: center;
 }
 
 .menu-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(70px, 1fr));
-  gap: 4px;
+  gap: 10px;
 }
 
 .menu-item {
   background: transparent;
   border: none;
   color: #fff6c4;
-  font-size: 11px;
+  font-size: 13px;
   font-family: inherit;
-  padding: 2px;
+  padding: 6px 4px;
   text-align: left;
   cursor: pointer;
 }
 
 .is-mobile-portrait #overlay {
-  top: 10px;
-  justify-content: center;
-  padding: 0 4px;
+  top: 12px;
+  padding: 0 6px;
 }
 
 .is-mobile-portrait .overlay-frame {
   width: 100%;
-  max-width: 520px;
-  padding: 12px 10px 8px;
-  gap: 6px;
+  max-width: 560px;
+  padding: 12px 10px 10px;
+  gap: 8px;
+}
+
+.is-mobile-portrait .info-box {
+  --title-height: 24px;
+  padding: calc(var(--title-height) + 8px) 12px 10px;
+  margin-top: calc(var(--title-height) / 2.2);
 }
 
 .is-mobile-portrait #statusBox,
 .is-mobile-portrait .menu-box {
   flex: 1 1 0;
   width: auto;
-  padding: 10px 8px 8px;
 }
 
 .is-mobile-portrait .box-title {
-  top: -12px;
   font-size: 12px;
+  width: 85%;
 }
 
 .is-mobile-portrait .menu-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 2px;
+  gap: 6px;
 }
 
 .is-mobile-portrait .menu-item {
-  font-size: 10px;
-  padding: 1px;
+  font-size: 12px;
+  padding: 4px 2px;
 }
 
-.is-mobile-portrait .status-row {
-  font-size: 10.5px;
+ .is-mobile-portrait .status-row {
+  font-size: 12px;
+  margin-bottom: 1px;
 }
 
 .is-mobile-portrait .quick-range-buttons,
@@ -205,6 +219,18 @@ html, body {
   pointer-events: auto;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.6);
   will-change: transform;
+  font-size: 14px;
+}
+
+.leaflet-popup-content {
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.log-popup strong {
+  display: block;
+  margin-bottom: 2px;
+  font-size: 15px;
 }
 
 .floating-window.open {

@@ -19,108 +19,123 @@
     <p id="status">位置情報取得中...</p>
     <button id="logoutBtn">ログアウト</button>
 
-    <section id="status-editor" class="card" style="display:none;">
-      <h3>勇者ステータス編集</h3>
-      <p class="card-help">ビューアで表示されるステータスを更新できます。</p>
-      <form id="statusForm" class="status-form">
-        <label for="statusLevel">Lv（年齢）</label>
-        <input type="text" id="statusLevel" placeholder="例：27">
+    <div class="tab-container">
+      <div class="tab-buttons">
+        <button class="tab-button active" data-tab-target="logTab">ログ記録</button>
+        <button class="tab-button" data-tab-target="statusTab">ステータス</button>
+        <button class="tab-button" data-tab-target="budgetTab">予算</button>
+      </div>
 
-        <label for="statusHp">HP</label>
-        <input type="text" id="statusHp" placeholder="例：88/120">
-
-        <label for="statusMp">MP</label>
-        <input type="text" id="statusMp" placeholder="例：30/40">
-
-        <label for="statusGold">所持金</label>
-        <input type="text" id="statusGold" placeholder="例：12000G">
-
-        <label for="statusCondition">状態異常</label>
-        <input type="text" id="statusCondition" placeholder="例：元気いっぱい">
-
-        <button type="submit">ステータスを保存</button>
-      </form>
-      <p id="statusSaveState" class="status-save-state"></p>
-    </section>
-
-    <section id="budget-editor" class="card" style="display:none;">
-      <h3>カテゴリ予算</h3>
-      <p class="card-help">各カテゴリの月間予算を入力してください（未入力は予算なし）。</p>
-      <form id="budgetForm" class="status-form">
-        <div class="budget-grid">
-          <label>食費
-            <input type="number" data-budget-category="食費" min="0" step="100" placeholder="例：30000">
-          </label>
-          <label>交通費
-            <input type="number" data-budget-category="交通費" min="0" step="100" placeholder="例：20000">
-          </label>
-          <label>作業
-            <input type="number" data-budget-category="作業" min="0" step="100">
-          </label>
-          <label>温泉
-            <input type="number" data-budget-category="温泉" min="0" step="100">
-          </label>
-          <label>観光費
-            <input type="number" data-budget-category="観光費" min="0" step="100">
-          </label>
-          <label>買い物
-            <input type="number" data-budget-category="買い物" min="0" step="100">
-          </label>
-          <label>宿泊費
-            <input type="number" data-budget-category="宿泊費" min="0" step="100">
-          </label>
-          <label>その他
-            <input type="number" data-budget-category="その他" min="0" step="100">
-          </label>
+      <div class="tab-panel active" id="logTab">
+        <div id="formModeBanner" class="form-mode-banner" hidden>
+          <span id="formModeText"></span>
+          <button type="button" id="cancelEditBtn">編集キャンセル</button>
         </div>
-        <button type="submit">予算を保存</button>
-      </form>
-      <p id="budgetSaveState" class="status-save-state"></p>
-    </section>
 
-    <form id="appForm">
-      <label>評価（5段階）</label>
-      <div id="star-rating" class="star-rating">
-        <span class="star" data-value="1">★</span>
-        <span class="star" data-value="2">★</span>
-        <span class="star" data-value="3">★</span>
-        <span class="star" data-value="4">★</span>
-        <span class="star" data-value="5">★</span>
+        <form id="appForm">
+          <label>評価（5段階）</label>
+          <div class="rating-row">
+            <div id="star-rating" class="star-rating">
+              <span class="star" data-value="1">★</span>
+              <span class="star" data-value="2">★</span>
+              <span class="star" data-value="3">★</span>
+              <span class="star" data-value="4">★</span>
+              <span class="star" data-value="5">★</span>
+            </div>
+            <button type="button" id="clearRatingBtn" class="ghost-btn">リセット</button>
+          </div>
+
+          <label for="locationNameInput">場所の名前</label>
+          <input type="text" id="locationNameInput" placeholder="場所の名前" required>
+
+          <label for="actionInput">メモ（行動内容など）</label>
+          <input type="text" id="actionInput" placeholder="例：観光、写真撮影、昼食など">
+
+          <label for="categorySelect">出費カテゴリ</label>
+          <select id="categorySelect" required>
+            <option value="" disabled selected>カテゴリを選択</option>
+            <option value="食費">食費</option>
+            <option value="交通費">交通費</option>
+            <option value="作業">作業</option>
+            <option value="温泉">温泉</option>
+            <option value="観光費">観光費</option>
+            <option value="買い物">買い物</option>
+            <option value="宿泊費">宿泊費</option>
+            <option value="その他">その他</option>
+          </select>
+
+          <label for="amountInput">金額（円）</label>
+          <input type="number" id="amountInput" placeholder="例：1200" min="0">
+
+          <button type="submit" id="logSubmitBtn">送信する</button>
+        </form>
+
+        <div id="logContainer"></div>
       </div>
 
-      <label for="location-search">場所を検索</label>
-      <div class="location-search-container">
-        <input type="text" id="location-search" placeholder="例：東京駅">
-        <button type="button" id="location-search-btn">検索</button>
+      <div class="tab-panel" id="statusTab">
+        <section id="status-editor" class="card" style="display:none;">
+          <h3>勇者ステータス編集</h3>
+          <p class="card-help">ビューアで表示されるステータスを更新できます。</p>
+          <form id="statusForm" class="status-form">
+            <label for="statusLevel">Lv（年齢）</label>
+            <input type="text" id="statusLevel" placeholder="例：27">
+
+            <label for="statusHp">HP</label>
+            <input type="text" id="statusHp" placeholder="例：88/120">
+
+            <label for="statusMp">MP</label>
+            <input type="text" id="statusMp" placeholder="例：30/40">
+
+            <label for="statusGold">所持金</label>
+            <input type="text" id="statusGold" placeholder="例：12000G">
+
+            <label for="statusCondition">状態異常</label>
+            <input type="text" id="statusCondition" placeholder="例：元気いっぱい">
+
+            <button type="submit">ステータスを保存</button>
+          </form>
+          <p id="statusSaveState" class="status-save-state"></p>
+        </section>
       </div>
-      <div id="location-results"></div>
-      
-      <label for="locationNameInput">場所の名前</label>
-      <input type="text" id="locationNameInput" placeholder="場所の名前" required>
 
-      <label for="actionInput">メモ（行動内容など）</label>
-      <input type="text" id="actionInput" placeholder="例：観光、写真撮影、昼食など">
-
-      <label for="categorySelect">出費カテゴリ</label>
-      <select id="categorySelect" required>
-        <option value="" disabled selected>カテゴリを選択</option>
-        <option value="食費">食費</option>
-        <option value="交通費">交通費</option>
-        <option value="作業">作業</option>
-        <option value="温泉">温泉</option>
-        <option value="観光費">観光費</option>
-        <option value="買い物">買い物</option>
-        <option value="宿泊費">宿泊費</option>
-        <option value="その他">その他</option>
-      </select>
-
-      <label for="amountInput">金額（円）</label>
-      <input type="number" id="amountInput" placeholder="例：1200" min="0">
-
-      <button type="submit">送信する</button>
-    </form>
-
-    <div id="logContainer"></div>
+      <div class="tab-panel" id="budgetTab">
+        <section id="budget-editor" class="card" style="display:none;">
+          <h3>カテゴリ予算</h3>
+          <p class="card-help">各カテゴリの月間予算を入力してください（未入力は予算なし）。</p>
+          <form id="budgetForm" class="status-form">
+            <div class="budget-grid">
+              <label>食費
+                <input type="number" data-budget-category="食費" min="0" step="100" placeholder="例：30000">
+              </label>
+              <label>交通費
+                <input type="number" data-budget-category="交通費" min="0" step="100" placeholder="例：20000">
+              </label>
+              <label>作業
+                <input type="number" data-budget-category="作業" min="0" step="100">
+              </label>
+              <label>温泉
+                <input type="number" data-budget-category="温泉" min="0" step="100">
+              </label>
+              <label>観光費
+                <input type="number" data-budget-category="観光費" min="0" step="100">
+              </label>
+              <label>買い物
+                <input type="number" data-budget-category="買い物" min="0" step="100">
+              </label>
+              <label>宿泊費
+                <input type="number" data-budget-category="宿泊費" min="0" step="100">
+              </label>
+              <label>その他
+                <input type="number" data-budget-category="その他" min="0" step="100">
+              </label>
+            </div>
+            <button type="submit">予算を保存</button>
+          </form>
+          <p id="budgetSaveState" class="status-save-state"></p>
+        </section>
+      </div>
+    </div>
   </div>
 
   <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>

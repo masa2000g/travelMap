@@ -76,12 +76,83 @@ button:hover {
   padding: 10px;
   margin-top: 10px;
   border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.log-entry:hover {
+  border-color: #bbb;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+.tab-container {
+  margin-top: 24px;
+}
+
+.tab-buttons {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 16px;
+}
+
+.tab-button {
+  flex: 1;
+  padding: 12px;
+  font-size: 16px;
+  background: #eee;
+  border: none;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+}
+
+.tab-button.active {
+  background: #fff;
+  color: #333;
+  border-bottom: 2px solid #4CAF50;
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+.form-mode-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #fffbea;
+  border: 1px solid #ffe8a1;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.form-mode-banner button {
+  width: auto;
+  margin-top: 0;
+  font-size: 14px;
+  padding: 8px 12px;
+}
+
+.form-mode-banner[hidden] {
+  display: none;
 }
 
 /* Added styles */
+.rating-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .star-rating {
-  direction: rtl;
-  display: inline-block;
+  display: inline-flex;
+  gap: 8px;
 }
 .star-rating .star {
   font-size: 2.5rem;
@@ -90,42 +161,23 @@ button:hover {
   transition: color 0.2s;
 }
 .star-rating .star:hover,
-.star-rating .star:hover ~ .star,
-.star-rating .star.selected,
-.star-rating .star.selected ~ .star {
+.star-rating .star.selected {
   color: #f8d64e;
 }
 
-.location-search-container {
-  display: flex;
-  gap: 8px;
-}
-#location-search {
-  flex-grow: 1;
-}
-#location-search-btn {
+.ghost-btn {
   width: auto;
-  margin-top: 8px;
-}
-
-#location-results {
-  margin-top: 10px;
+  padding: 8px 16px;
+  margin-top: 0;
+  font-size: 14px;
+  background: #f1f1f1;
+  color: #333;
   border: 1px solid #ddd;
-  background: #fff;
-  max-height: 200px;
-  overflow-y: auto;
+  border-radius: 6px;
 }
 
-.location-result-item {
-  padding: 10px;
-  cursor: pointer;
-  border-bottom: 1px solid #eee;
-}
-.location-result-item:hover {
-  background-color: #f0f0f0;
-}
-.location-result-item:last-child {
-  border-bottom: none;
+.ghost-btn:hover {
+  background: #e3e3e3;
 }
 #budget-editor {
   margin-top: 20px;

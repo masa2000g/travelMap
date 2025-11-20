@@ -248,6 +248,16 @@ const setLegendVisibility = (visible) => {
 const formatInputDate = (date) => date.toISOString().slice(0, 10);
 const formatRangeLabel = (date) => `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, "0")}/${String(date.getDate()).padStart(2, "0")}`;
 const formatCurrency = (value = 0) => `¥${Math.round(value).toLocaleString()}`;
+const formatDateYMD = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+const formatRating = (value) => {
+  if (!Number.isFinite(value) || value <= 0) return "未評価";
+  return `★${value}`;
+};
 
 let cachedLogs = [];
 let markers = [];
@@ -497,9 +507,7 @@ const matchesDisplayFilters = (logDate, category) => {
 };
 
 const gradientStops = [
-  { r: 224, g: 240, b: 255 },  // near-white blue (oldest)
-  { r: 120, g: 200, b: 255 },  // bright sky blue
-  { r: 255, g: 210, b: 110 },  // warm yellow
+  { r: 255, g: 255, b: 255 },  // pure white (oldest)
   { r: 255, g: 140, b: 0 }     // vivid orange (latest)
 ];
 
@@ -570,8 +578,17 @@ const renderLogs = async () => {
     if (!matchesDisplayFilters(log.timestamp, category)) return;
     visibleLogs.push(log);
     const logDate = log.timestamp;
-    const logDateStr = `${logDate.getFullYear()}年${logDate.getMonth() + 1}月${logDate.getDate()}日`;
-    const logTimeStr = `${String(logDate.getHours()).padStart(2, "0")}時${String(logDate.getMinutes()).padStart(2, "0")}分`;
+    const logDateStr = formatDateYMD(logDate);
+    const locationText = log.locationName || "不明な場所";
+    const popupHtml = `
+      <div class="log-popup">
+        <strong>${logDateStr}</strong><br>
+        場所：${locationText}<br>
+        評価：${formatRating(log.stars)}<br>
+        メモ：${log.memo || "（メモなし）"}<br>
+        出費：${formatCurrency(log.amount)}
+      </div>
+    `;
     const marker = L.circleMarker([log.lat, log.lng], {
       radius: 5,
       fillColor: CATEGORY_SETTINGS[category]?.color || "#999",
@@ -579,15 +596,14 @@ const renderLogs = async () => {
       weight: 1,
       opacity: 0.9,
       fillOpacity: 0.85
-    }).addTo(map).bindPopup(`<b>${logDateStr} ${logTimeStr}</b><br>メモ：${log.memo || "（メモなし）"}<br>出費：${formatCurrency(log.amount)}`);
+    }).addTo(map).bindPopup(popupHtml);
     markers.push(marker);
   });
 
   const latest = visibleLogs[visibleLogs.length - 1] || cachedLogs[cachedLogs.length - 1];
   if (latest && Number.isFinite(latest.lat) && Number.isFinite(latest.lng)) {
     const jst = latest.timestamp;
-    const dateStr = `${jst.getFullYear()}年${jst.getMonth() + 1}月${jst.getDate()}日`;
-    const timeStr = `${String(jst.getHours()).padStart(2, "0")}時${String(jst.getMinutes()).padStart(2, "0")}分`;
+    const dateStr = formatDateYMD(jst);
     let addressText = "取得中...";
     try {
       const res = await rateLimitedFetch(`https://nominatim.openstreetmap.org/reverse?lat=${latest.lat}&lon=${latest.lng}&format=json`);
@@ -597,9 +613,19 @@ const renderLogs = async () => {
     } catch (error) {
       addressText = "住所取得エラー";
     }
+    const popupLocation = latest.locationName || addressText || "不明な場所";
+    const popupHtml = `
+      <div class="log-popup">
+        <strong>${dateStr}</strong><br>
+        場所：${popupLocation}<br>
+        評価：${formatRating(latest.stars)}<br>
+        メモ：${latest.memo || "（メモなし）"}<br>
+        出費：${formatCurrency(latest.amount)}
+      </div>
+    `;
     if (latestMarker) map.removeLayer(latestMarker);
     latestMarker = L.marker([latest.lat, latest.lng], { icon: latestMarkerIcon }).addTo(map)
-      .bindPopup(`<b>${dateStr} ${timeStr}</b><br>場所：${addressText}<br>メモ：${latest.memo || "（メモなし）"}<br>出費：${formatCurrency(latest.amount)}`)
+      .bindPopup(popupHtml)
       .openPopup();
     map.setView([latest.lat + 0.1, latest.lng], 10);
   }
