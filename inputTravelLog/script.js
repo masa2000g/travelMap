@@ -121,6 +121,7 @@ let editingMetadata = null;
 let unsubscribeCategories = null;
 let categoriesData = [];
 let editingCategoryId = null;
+let categoriesSeeded = false;
 
 const formatTimestamp = (value) => {
   if (!value) return "";
@@ -221,17 +222,18 @@ const renderCategoryList = () => {
     info.appendChild(swatch);
     info.appendChild(label);
     li.appendChild(info);
-    if (cat.id) {
+    const docId = cat.id || cat.name;
+    if (docId) {
       const actions = document.createElement("div");
       actions.className = "category-actions";
       const editBtn = document.createElement("button");
       editBtn.type = "button";
       editBtn.textContent = "編集";
-      editBtn.addEventListener("click", () => startCategoryEdit(cat));
+      editBtn.addEventListener("click", () => startCategoryEdit({ ...cat, id: docId }));
       const deleteBtn = document.createElement("button");
       deleteBtn.type = "button";
       deleteBtn.textContent = "削除";
-      deleteBtn.addEventListener("click", () => handleCategoryDelete(cat));
+      deleteBtn.addEventListener("click", () => handleCategoryDelete({ ...cat, id: docId }));
       actions.appendChild(editBtn);
       actions.appendChild(deleteBtn);
       li.appendChild(actions);
@@ -241,7 +243,7 @@ const renderCategoryList = () => {
 };
 
 const startCategoryEdit = (cat) => {
-  editingCategoryId = cat.id;
+  editingCategoryId = cat.id || cat.name;
   if (categoryNameInput) categoryNameInput.value = cat.name || "";
   if (categoryColorInput) categoryColorInput.value = cat.color || DEFAULT_CATEGORY_MAP[cat.name] || "#ffcc00";
   const saveBtn = document.getElementById("categorySaveBtn");
@@ -262,24 +264,46 @@ const resetCategoryForm = () => {
 };
 
 const handleCategoryDelete = (cat) => {
-  if (!cat.id) return;
+  const docId = cat.id || cat.name;
+  if (!docId) return;
   if (!confirm(`${cat.name} を削除しますか？`)) return;
-  categoriesCollectionRef.doc(cat.id).delete().catch(error => {
+  categoriesCollectionRef.doc(docId).delete().catch(error => {
     alert("削除に失敗しました: " + error.message);
   });
 };
 
+const seedDefaultCategories = async () => {
+  const batch = db.batch();
+  DEFAULT_CATEGORIES.forEach(cat => {
+    const docRef = categoriesCollectionRef.doc(cat.name);
+    batch.set(docRef, { name: cat.name, color: cat.color }, { merge: true });
+  });
+  try {
+    await batch.commit();
+  } catch (error) {
+    console.error("カテゴリ初期化に失敗しました:", error);
+  }
+};
+
 const subscribeCategories = () => {
   if (!categoryManagerSection || unsubscribeCategories) return;
-  unsubscribeCategories = categoriesCollectionRef.orderBy("name").onSnapshot(snapshot => {
-    categoriesData = snapshot.docs.map(doc => {
-      const data = doc.data() || {};
-      return {
-        id: doc.id,
-        name: data.name || doc.id,
-        color: data.color || DEFAULT_CATEGORY_MAP[data.name] || "#cccccc"
-      };
-    });
+  unsubscribeCategories = categoriesCollectionRef.orderBy("name").onSnapshot(async snapshot => {
+    if (snapshot.empty) {
+      if (!categoriesSeeded) {
+        categoriesSeeded = true;
+        await seedDefaultCategories();
+      }
+      categoriesData = DEFAULT_CATEGORIES.map(cat => ({ ...cat, id: cat.name }));
+    } else {
+      categoriesData = snapshot.docs.map(doc => {
+        const data = doc.data() || {};
+        return {
+          id: doc.id,
+          name: data.name || doc.id,
+          color: data.color || DEFAULT_CATEGORY_MAP[data.name] || "#cccccc"
+        };
+      });
+    }
     renderCategoryList();
     populateCategorySelectOptions();
   }, (error) => {
@@ -488,14 +512,14 @@ function setupEventListeners() {
   appForm.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const locationName = locationNameInput.value;
+    const locationName = locationNameInput.value.trim() || "---";
     const memo = actionInput.value;
     const category = categorySelect.value;
     const amountValue = amountInputEl.value;
     const amount = amountValue === "" ? null : parseInt(amountValue, 10);
 
-    if (!locationName || !category) {
-      alert("場所の名前とカテゴリは必須です。");
+    if (!category) {
+      alert("カテゴリは必須です。");
       return;
     }
 
