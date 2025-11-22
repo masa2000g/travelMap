@@ -37,6 +37,7 @@
           <button type="button" id="presetWake" class="preset-btn">起床</button>
           <button type="button" id="presetSleep" class="preset-btn">就寝</button>
           <button type="button" id="presetFuel" class="preset-btn">給油</button>
+          <button type="button" id="presetMove" class="preset-btn">移動</button>
         </div>
 
         <form id="appForm">
@@ -167,6 +168,59 @@
           </ul>
         </section>
       </div>
+    </div>
+  </div>
+
+  <div id="editModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-dialog" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3>ログ編集</h3>
+        <button type="button" id="editModalClose" class="ghost-btn modal-close">×</button>
+      </div>
+      <form id="editForm" class="modal-body">
+        <label for="editDate">日付</label>
+        <input type="date" id="editDate" required>
+
+        <label for="editTime">時刻</label>
+        <input type="time" id="editTime" required>
+
+        <label for="editLocationName">場所の名前</label>
+        <input type="text" id="editLocationName" placeholder="場所の名前">
+
+        <label for="editMemo">メモ</label>
+        <input type="text" id="editMemo" placeholder="メモ">
+
+        <label for="editCategorySelect">出費カテゴリ</label>
+        <select id="editCategorySelect" required>
+          <option value="" disabled selected>カテゴリを選択</option>
+        </select>
+
+        <label for="editAmount">金額（円）</label>
+        <input type="number" id="editAmount" min="0" step="1">
+
+        <label for="editRating">評価</label>
+        <select id="editRating">
+          <option value="">未設定</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+
+        <label for="editLat">緯度</label>
+        <input type="number" id="editLat" step="0.000001" required>
+
+        <label for="editLng">経度</label>
+        <input type="number" id="editLng" step="0.000001" required>
+
+        <div class="modal-actions">
+          <button type="button" id="editDeleteBtn" class="danger-btn">削除</button>
+          <span id="editSaveState" class="edit-save-state"></span>
+          <button type="submit" class="primary-btn">更新する</button>
+        </div>
+      </form>
     </div>
   </div>
 

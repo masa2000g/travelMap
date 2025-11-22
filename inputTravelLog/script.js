@@ -87,7 +87,22 @@ const starsToValue = (value) => {
 const presetWakeBtn = document.getElementById('presetWake');
 const presetSleepBtn = document.getElementById('presetSleep');
 const presetFuelBtn = document.getElementById('presetFuel');
+const presetMoveBtn = document.getElementById('presetMove');
 const clearRatingBtn = document.getElementById('clearRatingBtn');
+const editModal = document.getElementById('editModal');
+const editModalCloseBtn = document.getElementById('editModalClose');
+const editForm = document.getElementById('editForm');
+const editDateInput = document.getElementById('editDate');
+const editTimeInput = document.getElementById('editTime');
+const editLocationInput = document.getElementById('editLocationName');
+const editMemoInput = document.getElementById('editMemo');
+const editCategorySelect = document.getElementById('editCategorySelect');
+const editAmountInput = document.getElementById('editAmount');
+const editRatingSelect = document.getElementById('editRating');
+const editLatInput = document.getElementById('editLat');
+const editLngInput = document.getElementById('editLng');
+const editDeleteBtn = document.getElementById('editDeleteBtn');
+const editSaveState = document.getElementById('editSaveState');
 const categoryManagerSection = document.getElementById('category-manager');
 const categoryForm = document.getElementById('categoryForm');
 const categoryNameInput = document.getElementById('categoryNameInput');
@@ -116,14 +131,13 @@ let currentLat = null;
 let currentLng = null;
 let unsubscribePlayerStatus = null;
 let unsubscribeBudgets = null;
-let editingLogId = null;
-let editingMetadata = null;
 let unsubscribeCategories = null;
 let categoriesData = [];
 let editingCategoryId = null;
 let categoriesSeeded = false;
 let draggingCategoryId = null;
 let isApplyingOrder = false;
+let modalEditingLogId = null;
 
 const sortCategoriesByOrder = (list) => {
   return [...list].sort((a, b) => {
@@ -199,26 +213,29 @@ const submitQuickLog = async ({ locationName, memo = "", category, amount = null
 const getEffectiveCategories = () => sortCategoriesByOrder(categoriesData.length ? categoriesData : DEFAULT_CATEGORIES);
 
 const populateCategorySelectOptions = () => {
-  if (!categorySelect) return;
-  const previous = categorySelect.value;
-  categorySelect.innerHTML = "";
-  const placeholder = document.createElement("option");
-  placeholder.value = "";
-  placeholder.disabled = true;
-  placeholder.textContent = "カテゴリを選択";
-  if (!previous) placeholder.selected = true;
-  categorySelect.appendChild(placeholder);
+  const targets = [categorySelect, editCategorySelect].filter(Boolean);
+  if (!targets.length) return;
   const names = getEffectiveCategories().map(cat => cat.name);
-  names.forEach(name => {
-    const option = document.createElement("option");
-    option.value = name;
-    option.textContent = name;
-    if (previous && previous === name) option.selected = true;
-    categorySelect.appendChild(option);
+  targets.forEach(selectEl => {
+    const previous = selectEl.value;
+    selectEl.innerHTML = "";
+    const placeholder = document.createElement("option");
+    placeholder.value = "";
+    placeholder.disabled = true;
+    placeholder.textContent = "カテゴリを選択";
+    if (!previous) placeholder.selected = true;
+    selectEl.appendChild(placeholder);
+    names.forEach(name => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      if (previous && previous === name) option.selected = true;
+      selectEl.appendChild(option);
+    });
+    if (previous && !names.includes(previous)) {
+      selectEl.selectedIndex = 0;
+    }
   });
-  if (previous && !names.includes(previous)) {
-    categorySelect.selectedIndex = 0;
-  }
 };
 
 const renderCategoryList = () => {
@@ -516,15 +533,10 @@ const teardownCategoriesSubscription = () => {
 renderCategoryList();
 populateCategorySelectOptions();
 
-const resetFormFields = () => {
+const resetFormState = () => {
   appForm.reset();
   currentRating = null;
   setStarSelection(null);
-};
-
-const exitEditingMode = () => {
-  editingLogId = null;
-  editingMetadata = null;
   if (formModeBanner) {
     formModeBanner.hidden = true;
   }
@@ -533,44 +545,117 @@ const exitEditingMode = () => {
   }
 };
 
-const resetFormState = () => {
-  resetFormFields();
-  exitEditingMode();
+const toDateTimeParts = (value) => {
+  const dateValue = typeof value?.toDate === "function" ? value.toDate() : new Date(value);
+  const base = Number.isNaN(dateValue.getTime()) ? new Date() : dateValue;
+  const year = base.getFullYear();
+  const month = String(base.getMonth() + 1).padStart(2, "0");
+  const day = String(base.getDate()).padStart(2, "0");
+  const hours = String(base.getHours()).padStart(2, "0");
+  const minutes = String(base.getMinutes()).padStart(2, "0");
+  return { dateStr: `${year}-${month}-${day}`, timeStr: `${hours}:${minutes}` };
 };
 
-const beginEditLogEntry = (docId, entry) => {
-  setActiveTab('logTab');
-  editingLogId = docId;
-  editingMetadata = {
-    lat: entry.lat ?? null,
-    lng: entry.lng ?? null,
-    timestamp: normalizeTimestamp(entry.timestamp)
-  };
-  locationNameInput.value = entry.locationName || '';
-  actionInput.value = entry.memo || '';
-  if (categorySelect) {
-    if (entry.amount_category) {
-      categorySelect.value = entry.amount_category;
-    } else {
-      categorySelect.selectedIndex = 0;
+const closeEditModal = () => {
+  modalEditingLogId = null;
+  editForm.reset();
+  if (editModal) {
+    editModal.setAttribute("aria-hidden", "true");
+    editModal.classList.remove("open");
+  }
+  if (editSaveState) editSaveState.textContent = "";
+};
+
+const openEditModal = (docId, entry) => {
+  modalEditingLogId = docId;
+  const { dateStr, timeStr } = toDateTimeParts(entry.timestamp);
+  if (editDateInput) editDateInput.value = dateStr;
+  if (editTimeInput) editTimeInput.value = timeStr;
+  if (editLocationInput) editLocationInput.value = entry.locationName || "";
+  if (editMemoInput) editMemoInput.value = entry.memo || "";
+  if (editCategorySelect) {
+    editCategorySelect.value = entry.amount_category || "";
+    if (!editCategorySelect.value && editCategorySelect.options.length) {
+      editCategorySelect.selectedIndex = 0;
     }
   }
-  if (entry.amount !== undefined && entry.amount !== null) {
-    amountInputEl.value = entry.amount;
-  } else {
-    amountInputEl.value = '';
+  if (editAmountInput) editAmountInput.value = entry.amount ?? "";
+  if (editRatingSelect) editRatingSelect.value = starsToValue(entry.stars) ?? "";
+  if (editLatInput) editLatInput.value = Number.isFinite(entry.lat) ? entry.lat : "";
+  if (editLngInput) editLngInput.value = Number.isFinite(entry.lng) ? entry.lng : "";
+  if (editModal) {
+    editModal.classList.add("open");
+    editModal.setAttribute("aria-hidden", "false");
   }
-  currentRating = starsToValue(entry.stars);
-  setStarSelection(currentRating);
-  if (formModeBanner && formModeText) {
-    formModeText.textContent = `${entry.locationName || '名称未設定'} を編集中`;
-    formModeBanner.hidden = false;
+};
+
+const buildTimestampFromInputs = () => {
+  const dateVal = editDateInput?.value;
+  const timeVal = editTimeInput?.value || "00:00";
+  if (!dateVal) return null;
+  const [year, month, day] = dateVal.split("-").map(part => Number(part));
+  const [hourRaw, minuteRaw] = timeVal.split(":").map(part => Number(part));
+  const hours = Number.isFinite(hourRaw) ? hourRaw : 0;
+  const minutes = Number.isFinite(minuteRaw) ? minuteRaw : 0;
+  if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return null;
+  const candidate = new Date(year, month - 1, day, hours, minutes, 0, 0);
+  return Number.isNaN(candidate.getTime()) ? null : candidate.toISOString();
+};
+
+const handleEditSubmit = async (event) => {
+  event.preventDefault();
+  if (!modalEditingLogId) return;
+  const category = editCategorySelect?.value;
+  if (!category) {
+    alert("カテゴリを選択してください。");
+    return;
   }
-  if (logSubmitBtn) {
-    logSubmitBtn.textContent = "更新する";
+  const lat = Number(editLatInput?.value);
+  const lng = Number(editLngInput?.value);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    alert("緯度・経度は数値で入力してください。");
+    return;
   }
-  if (typeof appForm.scrollIntoView === 'function') {
-    appForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const timestamp = buildTimestampFromInputs();
+  if (!timestamp) {
+    alert("日付と時刻を正しく入力してください。");
+    return;
+  }
+  const amountRaw = editAmountInput?.value;
+  const amount = amountRaw === "" ? null : Number(amountRaw);
+  if (amountRaw !== "" && !Number.isFinite(amount)) {
+    alert("金額は数値で入力してください。");
+    return;
+  }
+  const payload = {
+    locationName: editLocationInput?.value.trim() || "---",
+    memo: editMemoInput?.value || "",
+    amount_category: category,
+    amount,
+    stars: ratingToStars(editRatingSelect?.value) || null,
+    lat,
+    lng,
+    timestamp
+  };
+  try {
+    if (editSaveState) editSaveState.textContent = "更新中...";
+    await db.collection("logs").doc(modalEditingLogId).update(payload);
+    if (editSaveState) editSaveState.textContent = "更新しました";
+    closeEditModal();
+  } catch (error) {
+    if (editSaveState) editSaveState.textContent = `更新に失敗しました: ${error.message}`;
+  }
+};
+
+const handleEditDelete = async () => {
+  if (!modalEditingLogId) return;
+  if (!confirm("このログを削除しますか？")) return;
+  try {
+    if (editSaveState) editSaveState.textContent = "削除中...";
+    await db.collection("logs").doc(modalEditingLogId).delete();
+    closeEditModal();
+  } catch (error) {
+    if (editSaveState) editSaveState.textContent = `削除に失敗しました: ${error.message}`;
   }
 };
 
@@ -697,6 +782,40 @@ function setupEventListeners() {
     });
   }
 
+  if (presetMoveBtn) {
+    presetMoveBtn.addEventListener("click", () => {
+      submitQuickLog({
+        locationName: "移動",
+        memo: "",
+        category: "移動",
+        successMessage: "移動ログを記録しました。"
+      });
+    });
+  }
+
+  if (editForm && !editForm.dataset.initialized) {
+    editForm.dataset.initialized = "true";
+    editForm.addEventListener("submit", handleEditSubmit);
+  }
+  if (editDeleteBtn && !editDeleteBtn.dataset.bound) {
+    editDeleteBtn.dataset.bound = "true";
+    editDeleteBtn.addEventListener("click", handleEditDelete);
+  }
+  if (editModalCloseBtn && !editModalCloseBtn.dataset.bound) {
+    editModalCloseBtn.dataset.bound = "true";
+    editModalCloseBtn.addEventListener("click", closeEditModal);
+  }
+  const editModalBackdrop = editModal?.querySelector(".modal-backdrop");
+  if (editModalBackdrop && !editModalBackdrop.dataset.bound) {
+    editModalBackdrop.dataset.bound = "true";
+    editModalBackdrop.addEventListener("click", closeEditModal);
+  }
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && editModal?.classList.contains("open")) {
+      closeEditModal();
+    }
+  });
+
   // Form Submission
   appForm.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -712,10 +831,9 @@ function setupEventListeners() {
       return;
     }
 
-    const isEditing = Boolean(editingLogId);
-    const latToUse = isEditing ? (editingMetadata?.lat ?? currentLat) : currentLat;
-    const lngToUse = isEditing ? (editingMetadata?.lng ?? currentLng) : currentLng;
-    const timestampToUse = isEditing ? (editingMetadata?.timestamp ?? new Date().toISOString()) : new Date().toISOString();
+    const latToUse = currentLat;
+    const lngToUse = currentLng;
+    const timestampToUse = new Date().toISOString();
 
     const data = {
       stars: ratingToStars(currentRating) || null,
@@ -729,13 +847,8 @@ function setupEventListeners() {
     };
 
     try {
-      if (isEditing) {
-        await db.collection('logs').doc(editingLogId).update(data);
-        alert("更新完了！");
-      } else {
-        await db.collection('logs').add(data);
-        alert("送信完了！");
-      }
+      await db.collection('logs').add(data);
+      alert("送信完了！");
       resetFormState();
     } catch (error) {
       alert("送信に失敗しました: " + error.message);
@@ -926,7 +1039,7 @@ function displayLogs() {
         金額：¥${entry.amount !== null ? entry.amount : '---'}<br>
         <small>緯度：${latText}, 経度：${lngText}</small>
       `;
-      div.addEventListener('click', () => beginEditLogEntry(doc.id, entry));
+      div.addEventListener('click', () => openEditModal(doc.id, entry));
       logContainer.appendChild(div);
     });
   });

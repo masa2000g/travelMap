@@ -53,6 +53,7 @@ const DEFAULT_CATEGORY_SETTINGS = {
   就寝: { color: '#6c5ce7' },
   給油: { color: '#f1c40f' }
 };
+const HIDDEN_MARKER_CATEGORIES = new Set(["移動"]);
 let categoryColors = { ...DEFAULT_CATEGORY_SETTINGS };
 
 const getCategoryEntries = () => {
@@ -659,11 +660,14 @@ const renderLogs = async () => {
   }
 
   const visibleLogs = [];
+  const markerLogs = [];
   cachedLogs.forEach(log => {
     if (!Number.isFinite(log.lat) || !Number.isFinite(log.lng)) return;
     const category = log.amount_category || "その他";
     if (!matchesDisplayFilters(log.timestamp, category)) return;
+    if (HIDDEN_MARKER_CATEGORIES.has(category)) return;
     visibleLogs.push(log);
+    markerLogs.push(log);
     const logDate = log.timestamp;
     const logDateStr = formatDateYMD(logDate);
     const logTimeStr = formatTimeHM(logDate);
@@ -690,36 +694,39 @@ const renderLogs = async () => {
     markers.push(marker);
   });
 
-  const latest = visibleLogs[visibleLogs.length - 1] || cachedLogs[cachedLogs.length - 1];
-  if (latest && Number.isFinite(latest.lat) && Number.isFinite(latest.lng)) {
-    const jst = latest.timestamp;
+  const latestCandidate = markerLogs[markerLogs.length - 1] || [...cachedLogs].reverse().find(log => {
+    const cat = log.amount_category || "その他";
+    return !HIDDEN_MARKER_CATEGORIES.has(cat) && Number.isFinite(log.lat) && Number.isFinite(log.lng);
+  });
+  if (latestCandidate && Number.isFinite(latestCandidate.lat) && Number.isFinite(latestCandidate.lng)) {
+    const jst = latestCandidate.timestamp;
     const dateStr = formatDateYMD(jst);
     const timeStr = formatTimeHM(jst);
     let addressText = "取得中...";
     try {
-      const res = await rateLimitedFetch(`https://nominatim.openstreetmap.org/reverse?lat=${latest.lat}&lon=${latest.lng}&format=json`);
+      const res = await rateLimitedFetch(`https://nominatim.openstreetmap.org/reverse?lat=${latestCandidate.lat}&lon=${latestCandidate.lng}&format=json`);
       const data = await res.json();
       const addr = data.address || {};
       addressText = [addr.state, addr.city || addr.town || addr.village].filter(Boolean).join(" ");
     } catch (error) {
       addressText = "住所取得エラー";
     }
-    const popupLocation = latest.locationName || addressText || "不明な場所";
+    const popupLocation = latestCandidate.locationName || addressText || "不明な場所";
     const popupHtml = `
       <div class="log-popup">
         <div class="log-popup-row">日付：${dateStr}</div>
         <div class="log-popup-row">時刻：${timeStr}</div>
         <div class="log-popup-row">場所：${popupLocation}</div>
-        <div class="log-popup-row">メモ：${latest.memo || "（メモなし）"}</div>
-        <div class="log-popup-row">評価：${formatRating(latest.stars)}</div>
-        <div class="log-popup-row">出費：${formatCurrency(latest.amount)}</div>
+        <div class="log-popup-row">メモ：${latestCandidate.memo || "（メモなし）"}</div>
+        <div class="log-popup-row">評価：${formatRating(latestCandidate.stars)}</div>
+        <div class="log-popup-row">出費：${formatCurrency(latestCandidate.amount)}</div>
       </div>
     `;
     if (latestMarker) map.removeLayer(latestMarker);
-    latestMarker = L.marker([latest.lat, latest.lng], { icon: latestMarkerIcon }).addTo(map)
+    latestMarker = L.marker([latestCandidate.lat, latestCandidate.lng], { icon: latestMarkerIcon }).addTo(map)
       .bindPopup(popupHtml)
       .openPopup();
-    map.setView([latest.lat + 0.1, latest.lng], 10);
+    map.setView([latestCandidate.lat + 0.1, latestCandidate.lng], 10);
   }
   setTimeout(() => map.invalidateSize(), 500);
   renderExpenseStats();

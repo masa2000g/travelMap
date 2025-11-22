@@ -302,3 +302,84 @@ button:hover {
 .budget-grid label {
   margin-top: 0;
 }
+
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.modal.open {
+  display: flex;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.modal-dialog {
+  position: relative;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  width: min(520px, 92vw);
+  max-height: 90vh;
+  overflow: auto;
+  padding: 18px;
+  z-index: 1;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.modal-body label {
+  margin-top: 12px;
+}
+
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.modal-actions button {
+  width: auto;
+  margin-top: 0;
+}
+
+.modal-close {
+  width: auto;
+  padding: 8px 12px;
+}
+
+.primary-btn {
+  background: #4CAF50;
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+}
+
+.danger-btn {
+  background: #e74c3c;
+  color: #fff;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 6px;
+}
+
+.edit-save-state {
+  font-size: 14px;
+  color: #333;
+  flex: 1;
+}
