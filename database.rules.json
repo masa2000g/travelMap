@@ -1,8 +1,6 @@
 {
   "rules": {
-    "logs": {
-      ".read": true,
-      ".write": "auth != null"
-    }
+    ".read": false,
+    ".write": false
   }
 }
