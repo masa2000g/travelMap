@@ -1,17 +1,24 @@
+const fs = require('fs');
+const path = require('path');
 const admin = require('firebase-admin');
 
+const loadServiceAccount = () => {
+  const candidate = process.env.SERVICE_ACCOUNT_PATH || path.join(__dirname, "serviceAccountKey.json");
+  if (!fs.existsSync(candidate)) {
+    console.error("Service account key not found.");
+    console.error("Set SERVICE_ACCOUNT_PATH to the absolute path of your service account JSON.");
+    process.exit(1);
+  }
+  const json = fs.readFileSync(candidate, "utf8");
+  return JSON.parse(json);
+};
+
 // Initialize Firebase Admin SDK
-try {
-  const serviceAccount = require('./serviceAccountKey.json');
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-    databaseURL: `https://${serviceAccount.project_id}-default-rtdb.firebaseio.com`
-  });
-} catch (error) {
-  console.error("Error initializing Firebase Admin SDK. Make sure 'serviceAccountKey.json' is present in the same directory.");
-  console.error(error.message);
-  process.exit(1);
-}
+const serviceAccount = loadServiceAccount();
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+  databaseURL: `https://${serviceAccount.project_id}-default-rtdb.firebaseio.com`
+});
 
 
 const rtdb = admin.database();

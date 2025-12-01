@@ -16,7 +16,7 @@
 ## リポジトリ衛生
 - [x] エディタの一時ファイルを `.gitignore` に追加（`*~`, `*.swp`, `*.un~`）。
 - [x] 不要な一時ファイル（`docs/.explain.html.un~`）を削除。
-- [ ] `git-secrets` や `pre-commit` で秘密情報スキャンを導入する。
+- [x] 秘密情報スキャンを導入（`scripts/secret-scan.sh` + `githooks/pre-commit`）。`git config core.hooksPath githooks` で有効化。
 
 ## 運用チェック
 - [ ] ルール変更時は Firebase Emulator またはルールシミュレーターでテストする。
@@ -36,11 +36,15 @@
   - 不要アカウントを削除し、権限を最小化。
 - Firebase API キー制限:
   - Firebase Console で Web API キーの「アプリの制限」「API の制限」を設定し、許可ドメインを絞る。
-- git-secrets 導入（例）:
-  1. `brew install git-secrets` あるいは `git clone https://github.com/awslabs/git-secrets.git && sudo make install`。
-  2. リポジトリで `git secrets --install && git secrets --register-aws --global` を実行。
-  3. `git secrets --add 'AIza[0-9A-Za-z-_]+'` のように Firebase API キー用のパターンを追加。
-  4. コミット前に `git secrets --scan` でチェック（pre-commit hook でも可）。
+- 秘密情報スキャン:
+  - 付属スクリプト: `./scripts/secret-scan.sh`（`rg` が必要）。手動実行、または以下で pre-commit フックを有効化。
+    - `git config core.hooksPath githooks`
+    - `./scripts/secret-scan.sh` がコミット前に走り、疑わしい文字列があると失敗します。
+  - git-secrets を使う場合（任意、ネットワーク環境で）:
+    1. `brew install git-secrets` あるいは `git clone https://github.com/awslabs/git-secrets.git && sudo make install`。
+    2. リポジトリで `git secrets --install && git secrets --register-aws --global` を実行。
+    3. `git secrets --add 'AIza[0-9A-Za-z-_]+'` などでパターン追加。
+    4. `githooks/pre-commit` 内で `git secrets --scan` を呼ぶように差し替えて運用することも可能。
 - ルール変更の検証:
   - Firebase Emulator Suite で Firestore/RTDB ルールをテストし、`firebase emulators:start --only firestore` などで動作を確認。
   - 変更内容はルールシミュレーターのスクリーンショットや結果を残すと再検証しやすい。
