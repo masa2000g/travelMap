@@ -621,7 +621,11 @@ const renderLogs = async () => {
 
   const pathLogs = cachedLogs
     .filter(log => Number.isFinite(log.lat) && Number.isFinite(log.lng))
-    .sort((a, b) => a.timestamp - b.timestamp);
+    .sort((a, b) => {
+      const timeDiff = a.timestamp - b.timestamp;
+      if (timeDiff !== 0) return timeDiff;
+      return String(a.id || "").localeCompare(String(b.id || ""), "en");
+    });
 
   if (pathLogs.length > 1) {
     const latlngsAll = pathLogs.map(log => [log.lat, log.lng]);
