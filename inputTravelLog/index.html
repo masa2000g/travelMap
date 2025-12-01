@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>出費・行動ログ</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="login-section">
+    <h2>ログイン</h2>
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="password" id="password" placeholder="Password" required>
+    <button id="loginBtn">ログイン</button>
+  </div>
+
+  <div id="app-section" style="display:none;">
+    <h2>行動・出費記録</h2>
+    <p id="status">位置情報取得中...</p>
+    <button id="logoutBtn">ログアウト</button>
+
+    <div class="tab-container">
+      <div class="tab-buttons">
+        <button class="tab-button active" data-tab-target="logTab">ログ記録</button>
+        <button class="tab-button" data-tab-target="statusTab">ステータス</button>
+        <button class="tab-button" data-tab-target="budgetTab">予算</button>
+        <button class="tab-button" data-tab-target="categoryTab">カテゴリ</button>
+      </div>
+
+      <div class="tab-panel active" id="logTab">
+        <div id="formModeBanner" class="form-mode-banner" hidden>
+          <span id="formModeText"></span>
+          <button type="button" id="cancelEditBtn">編集キャンセル</button>
+        </div>
+
+        <div class="preset-bar">
+          <button type="button" id="presetWake" class="preset-btn">起床</button>
+          <button type="button" id="presetSleep" class="preset-btn">就寝</button>
+          <button type="button" id="presetFuel" class="preset-btn">給油</button>
+          <button type="button" id="presetMove" class="preset-btn">移動</button>
+        </div>
+
+        <form id="appForm">
+          <label>評価（5段階）</label>
+          <div class="rating-row">
+            <div id="star-rating" class="star-rating">
+              <span class="star" data-value="1">★</span>
+              <span class="star" data-value="2">★</span>
+              <span class="star" data-value="3">★</span>
+              <span class="star" data-value="4">★</span>
+              <span class="star" data-value="5">★</span>
+            </div>
+            <button type="button" id="clearRatingBtn" class="ghost-btn">リセット</button>
+          </div>
+
+          <label for="locationNameInput">場所の名前</label>
+          <input type="text" id="locationNameInput" placeholder="場所の名前">
+
+          <label for="actionInput">メモ（行動内容など）</label>
+          <input type="text" id="actionInput" placeholder="例：観光、写真撮影、昼食など">
+
+          <label for="categorySelect">出費カテゴリ</label>
+          <select id="categorySelect" required>
+            <option value="" disabled selected>カテゴリを選択</option>
+            <option value="食費">食費</option>
+            <option value="交通費">交通費</option>
+            <option value="作業">作業</option>
+            <option value="温泉">温泉</option>
+            <option value="観光費">観光費</option>
+            <option value="買い物">買い物</option>
+            <option value="宿泊費">宿泊費</option>
+            <option value="その他">その他</option>
+            <option value="起床">起床</option>
+            <option value="就寝">就寝</option>
+            <option value="給油">給油</option>
+          </select>
+
+          <label for="amountInput">金額（円）</label>
+          <input type="number" id="amountInput" placeholder="例：1200" min="0">
+
+          <button type="submit" id="logSubmitBtn">送信する</button>
+        </form>
+
+        <div id="logContainer"></div>
+      </div>
+
+      <div class="tab-panel" id="statusTab">
+        <section id="status-editor" class="card" style="display:none;">
+          <h3>勇者ステータス編集</h3>
+          <p class="card-help">ビューアで表示されるステータスを更新できます。</p>
+          <form id="statusForm" class="status-form">
+            <label for="statusLevel">Lv（年齢）</label>
+            <input type="text" id="statusLevel" placeholder="例：27">
+
+            <label for="statusHp">HP</label>
+            <input type="text" id="statusHp" placeholder="例：88/120">
+
+            <label for="statusMp">MP</label>
+            <input type="text" id="statusMp" placeholder="例：30/40">
+
+            <label for="statusGold">所持金</label>
+            <input type="text" id="statusGold" placeholder="例：12000G">
+
+            <label for="statusCondition">状態異常</label>
+            <input type="text" id="statusCondition" placeholder="例：元気いっぱい">
+
+            <button type="submit">ステータスを保存</button>
+          </form>
+          <p id="statusSaveState" class="status-save-state"></p>
+        </section>
+      </div>
+
+      <div class="tab-panel" id="budgetTab">
+        <section id="budget-editor" class="card" style="display:none;">
+          <h3>カテゴリ予算</h3>
+          <p class="card-help">各カテゴリの月間予算を入力してください（未入力は予算なし）。</p>
+          <form id="budgetForm" class="status-form">
+            <div class="budget-grid">
+              <label>食費
+                <input type="number" data-budget-category="食費" min="0" step="100" placeholder="例：30000">
+              </label>
+              <label>交通費
+                <input type="number" data-budget-category="交通費" min="0" step="100" placeholder="例：20000">
+              </label>
+              <label>作業
+                <input type="number" data-budget-category="作業" min="0" step="100">
+              </label>
+              <label>温泉
+                <input type="number" data-budget-category="温泉" min="0" step="100">
+              </label>
+              <label>観光費
+                <input type="number" data-budget-category="観光費" min="0" step="100">
+              </label>
+              <label>買い物
+                <input type="number" data-budget-category="買い物" min="0" step="100">
+              </label>
+              <label>宿泊費
+                <input type="number" data-budget-category="宿泊費" min="0" step="100">
+              </label>
+              <label>その他
+                <input type="number" data-budget-category="その他" min="0" step="100">
+              </label>
+            </div>
+            <button type="submit">予算を保存</button>
+          </form>
+          <p id="budgetSaveState" class="status-save-state"></p>
+        </section>
+      </div>
+
+      <div class="tab-panel" id="categoryTab">
+        <section id="category-manager" class="card">
+          <h3>カテゴリ設定</h3>
+          <p class="card-help">カテゴリ名と色を管理できます。リスト上で直接編集でき、ドラッグで並び替えできます。</p>
+          <form id="categoryForm" class="status-form">
+            <label for="categoryNameInput">カテゴリ名</label>
+            <input type="text" id="categoryNameInput" placeholder="例：食費">
+
+            <label for="categoryColorInput">色</label>
+            <input type="color" id="categoryColorInput" value="#ffcc00">
+
+            <div class="category-form-actions">
+              <button type="submit" id="categorySaveBtn">カテゴリを追加</button>
+              <button type="button" id="categoryCancelEdit" class="ghost-btn">キャンセル</button>
+            </div>
+          </form>
+          <ul id="categoriesList" class="categories-list">
+            <li>カテゴリ情報を取得中...</li>
+          </ul>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <div id="editModal" class="modal" aria-hidden="true">
+    <div class="modal-backdrop"></div>
+    <div class="modal-dialog" role="dialog" aria-modal="true">
+      <div class="modal-header">
+        <h3>ログ編集</h3>
+        <button type="button" id="editModalClose" class="ghost-btn modal-close">×</button>
+      </div>
+      <form id="editForm" class="modal-body">
+        <label for="editDate">日付</label>
+        <input type="date" id="editDate" required>
+
+        <label for="editTime">時刻</label>
+        <input type="time" id="editTime" required>
+
+        <label for="editLocationName">場所の名前</label>
+        <input type="text" id="editLocationName" placeholder="場所の名前">
+
+        <label for="editMemo">メモ</label>
+        <input type="text" id="editMemo" placeholder="メモ">
+
+        <label for="editCategorySelect">出費カテゴリ</label>
+        <select id="editCategorySelect" required>
+          <option value="" disabled selected>カテゴリを選択</option>
+        </select>
+
+        <label for="editAmount">金額（円）</label>
+        <input type="number" id="editAmount" min="0" step="1">
+
+        <label for="editRating">評価</label>
+        <select id="editRating">
+          <option value="">未設定</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+
+        <label for="editLat">緯度</label>
+        <input type="number" id="editLat" step="0.000001" required>
+
+        <label for="editLng">経度</label>
+        <input type="number" id="editLng" step="0.000001" required>
+
+        <div class="modal-actions">
+          <button type="button" id="editDeleteBtn" class="danger-btn">削除</button>
+          <span id="editSaveState" class="edit-save-state"></span>
+          <button type="submit" class="primary-btn">更新する</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
